@@ -49,8 +49,8 @@ export default function BmiCalculatorForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      height: undefined,
-      weight: undefined,
+      height: '' as any,
+      weight: '' as any,
       unit: 'metric',
     },
   });
@@ -92,8 +92,8 @@ export default function BmiCalculatorForm() {
     form.setValue('unit', newUnit);
     setBmiResult(null);
     form.reset({
-      height: undefined,
-      weight: undefined,
+      height: '' as any,
+      weight: '' as any,
       unit: newUnit,
     });
   };

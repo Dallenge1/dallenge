@@ -17,7 +17,7 @@ const MessageSchema = z.object({
 });
 
 const ChatInputSchema = z.object({
-  history: z.array(MessageSchema),
+  history: z.array(MessageSchema).optional(),
   message: z.string(),
 });
 export type ChatInput = z.infer<typeof ChatInputSchema>;
@@ -55,7 +55,7 @@ const chatFlow = ai.defineFlow(
   async ({history, message}) => {
     const {output} = await ai.generate({
       system: systemPrompt,
-      history: history.map(h => ({role: h.role, parts: [{text: h.content}]})),
+      history: history?.map(h => ({role: h.role, parts: [{text: h.content}]})),
       prompt: message,
     });
     return output?.text ?? 'Sorry, I could not process that. Please try again.';

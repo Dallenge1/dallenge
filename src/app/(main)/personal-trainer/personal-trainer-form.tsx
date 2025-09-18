@@ -5,8 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  PersonalizedFitnessRecommendationsInput as FormSchema,
+  PersonalizedFitnessRecommendationsInputSchema,
 } from '@/ai/flows/personalized-fitness-recommendations';
+import type { PersonalizedFitnessRecommendationsInput } from '@/ai/flows/personalized-fitness-recommendations';
 import { getRecommendationsAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Bot, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const formSchema = FormSchema;
+const formSchema = PersonalizedFitnessRecommendationsInputSchema;
 
 export default function PersonalTrainerForm() {
   const [recommendation, setRecommendation] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export default function PersonalTrainerForm() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: PersonalizedFitnessRecommendationsInput) {
     setIsLoading(true);
     setRecommendation(null);
     try {
@@ -93,7 +94,7 @@ export default function PersonalTrainerForm() {
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g. 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || undefined)} />
+                        <Input type="number" placeholder="e.g. 25" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -106,7 +107,7 @@ export default function PersonalTrainerForm() {
                     <FormItem>
                       <FormLabel>Weight (kg)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g. 70" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || undefined)}/>
+                        <Input type="number" placeholder="e.g. 70" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

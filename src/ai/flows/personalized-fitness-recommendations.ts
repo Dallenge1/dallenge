@@ -5,6 +5,7 @@
  * @fileOverview AI-powered personal fitness trainer that provides personalized fitness recommendations based on user data.
  *
  * - getPersonalizedFitnessRecommendations - A function that takes user data as input and returns personalized fitness recommendations.
+ * - PersonalizedFitnessRecommendationsInputSchema - The Zod schema for the input of getPersonalizedFitnessRecommendations.
  * - PersonalizedFitnessRecommendationsInput - The input type for the getPersonalizedFitnessRecommendations function.
  * - PersonalizedFitnessRecommendationsOutput - The return type for the getPersonalizedFitnessRecommendations function.
  */
@@ -12,14 +13,15 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const PersonalizedFitnessRecommendationsInputSchema = z.object({
-  age: z.number().describe('The age of the user in years.'),
-  weight: z.number().describe('The weight of the user in kilograms.'),
+export const PersonalizedFitnessRecommendationsInputSchema = z.object({
+  age: z.coerce.number({invalid_type_error: 'Please enter a valid age.'}).positive({message: "Age must be a positive number."}),
+  weight: z.coerce.number({invalid_type_error: 'Please enter a valid weight.'}).positive({message: "Weight must be a positive number."}),
   fitnessLevel: z
     .enum(['Beginner', 'Intermediate', 'Advanced'])
     .describe('The current fitness level of the user.'),
   goals: z
     .string()
+    .min(1, 'Goals are required.')
     .describe(
       'The fitness goals of the user, e.g., weight loss, muscle gain, improved endurance.'
     ),

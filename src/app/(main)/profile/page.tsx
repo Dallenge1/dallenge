@@ -24,11 +24,25 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { Textarea } from '@/components/ui/textarea';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
+  phone: z.string().optional(),
+  dob: z.date().optional(),
+  bio: z.string().max(200, "Bio can't be longer than 200 characters.").optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -42,13 +56,16 @@ export default function ProfilePage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       displayName: user?.displayName ?? '',
+      phone: '',
+      bio: '',
     },
   });
 
   const onProfileSubmit = (data: ProfileFormValues) => {
+    console.log(data);
     toast({
       title: 'Profile Updated',
-      description: 'Your display name has been updated.',
+      description: 'Your personal information has been updated.',
     });
   };
 
@@ -65,40 +82,124 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>Personal Information</CardTitle>
           <CardDescription>
-            Update your display name and view your email address.
+            Update your display name and other personal details.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              {userAvatar && <AvatarImage src={userAvatar.imageUrl} />}
-              <AvatarFallback>
-                {user?.displayName?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="grid gap-1">
-              <h2 className="text-xl font-semibold">{user?.displayName}</h2>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
-            </div>
-          </div>
+        <CardContent>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onProfileSubmit)}
-              className="space-y-4"
+              className="space-y-6"
             >
+              <div className="flex items-center gap-4">
+                <Avatar className="h-20 w-20">
+                  {userAvatar && <AvatarImage src={userAvatar.imageUrl} />}
+                  <AvatarFallback>
+                    {user?.displayName?.charAt(0).toUpperCase() ??
+                      user?.email?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid gap-1">
+                  <h2 className="text-xl font-semibold">
+                    {user?.displayName}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="displayName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Display Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your display name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="Your phone number"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="displayName"
+                name="dob"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date of Birth</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, 'PPP')
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date('1900-01-01')
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="bio"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Display Name</Label>
+                    <FormLabel>Bio</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your display name" {...field} />
+                      <Textarea
+                        placeholder="Tell us a little bit about yourself"
+                        className="resize-none"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <Button type="submit">Save Changes</Button>
             </form>
           </Form>

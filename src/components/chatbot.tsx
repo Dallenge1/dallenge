@@ -18,7 +18,10 @@ import { chatAction } from '@/app/actions';
 import { Skeleton } from './ui/skeleton';
 import type { ChatInput } from '@/ai/flows/chat-types';
 
-type Message = ChatInput['history'][number];
+type Message = {
+  role: 'user' | 'model';
+  content: string;
+};
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +40,7 @@ export default function Chatbot() {
     if (isOpen && messages.length === 0) {
       setMessages([introductionMessage]);
     }
-  }, [isOpen, messages]);
+  }, [isOpen, messages.length]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -58,13 +61,27 @@ export default function Chatbot() {
     setIsLoading(true);
 
     try {
-      const history = newMessages.slice(1, -1);
-      const response = await chatAction({ history, message: userMessage.content });
+      const historyForApi: ChatInput['history'] = newMessages
+        .slice(1, -1) // Exclude introduction and current user message
+        .map((msg) => ({
+          role: msg.role,
+          content: [{ text: msg.content }],
+        }));
+
+      const response = await chatAction({
+        history: historyForApi,
+        message: userMessage.content,
+      });
+
       setMessages((prev) => [...prev, { role: 'model', content: response }]);
     } catch (error) {
+      console.error('Chatbot error:', error);
       setMessages((prev) => [
         ...prev,
-        { role: 'model', content: 'Sorry, something went wrong. Please try again.' },
+        {
+          role: 'model',
+          content: 'Sorry, something went wrong. Please try again.',
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -117,7 +134,7 @@ export default function Chatbot() {
                   </div>
                   {msg.role === 'user' && (
                     <Avatar className="h-8 w-8">
-                       <AvatarFallback>
+                      <AvatarFallback>
                         <User className="h-5 w-5" />
                       </AvatarFallback>
                     </Avatar>
@@ -125,17 +142,17 @@ export default function Chatbot() {
                 </div>
               ))}
               {isLoading && (
-                 <div className="flex items-start gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        <Bot className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                 </div>
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      <Bot className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
               )}
             </div>
           </ScrollArea>

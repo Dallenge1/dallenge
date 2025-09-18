@@ -11,7 +11,7 @@ import { z } from 'genkit';
 
 const MessageSchema = z.object({
   role: z.enum(['user', 'model']),
-  content: z.string(),
+  content: z.array(z.object({ text: z.string() })),
 });
 
 export const ChatInputSchema = z.object({

@@ -7,8 +7,12 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { ChatInput, ChatInputSchema, ChatOutput, ChatOutputSchema } from './chat-types';
-
+import {
+  ChatInput,
+  ChatInputSchema,
+  ChatOutput,
+  ChatOutputSchema,
+} from './chat-types';
 
 export async function askAwion(input: ChatInput): Promise<ChatOutput> {
   return await chatFlow(input);
@@ -39,22 +43,31 @@ When asked for help, be friendly and concise. If the user asks a question that i
 
     const fullHistory = [
       { role: 'user' as const, content: [{ text: systemPrompt }] },
-      { role: 'model' as const, content: [{ text: 'Hello! I am AWION, your AI assistant. How can I help you navigate the features of the DAWION application today?' }] },
+      {
+        role: 'model' as const,
+        content: [
+          {
+            text: 'Hello! I am AWION, your AI assistant. How can I help you navigate the features of the DAWION application today?',
+          },
+        ],
+      },
     ];
 
     if (history) {
-      fullHistory.push(...history.map(h => ({
-        role: h.role,
-        content: [{text: h.content}]
-      })))
+      fullHistory.push(...history);
     }
 
-    const { output } = await ai.generate({
-      prompt: message,
-      history: fullHistory,
-      model: 'googleai/gemini-2.5-flash',
-    });
+    try {
+      const { output } = await ai.generate({
+        prompt: message,
+        history: fullHistory,
+        model: 'googleai/gemini-2.5-flash',
+      });
 
-    return output?.text ?? 'Sorry, I could not process that. Please try again.';
+      return output?.text ?? 'Sorry, I could not process that. Please try again.';
+    } catch (e) {
+      console.error('Error in chatFlow:', e);
+      return 'Sorry, there was an error processing your request.';
+    }
   }
 );

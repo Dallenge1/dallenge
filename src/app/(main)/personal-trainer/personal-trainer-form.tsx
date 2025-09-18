@@ -4,9 +4,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  PersonalizedFitnessRecommendationsInputSchema,
-} from '@/ai/flows/personalized-fitness-recommendations';
 import type { PersonalizedFitnessRecommendationsInput } from '@/ai/flows/personalized-fitness-recommendations';
 import { getRecommendationsAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
@@ -39,7 +36,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Bot, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const formSchema = PersonalizedFitnessRecommendationsInputSchema;
+const formSchema = z.object({
+  age: z.coerce.number({invalid_type_error: 'Please enter a valid age.'}).positive({message: "Age must be a positive number."}),
+  weight: z.coerce.number({invalid_type_error: 'Please enter a valid weight.'}).positive({message: "Weight must be a positive number."}),
+  fitnessLevel: z
+    .enum(['Beginner', 'Intermediate', 'Advanced']),
+  goals: z
+    .string()
+    .min(1, 'Goals are required.'),
+});
 
 export default function PersonalTrainerForm() {
   const [recommendation, setRecommendation] = useState<string | null>(null);

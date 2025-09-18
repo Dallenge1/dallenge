@@ -7,6 +7,7 @@ import {
   Bot,
   ClipboardList,
   Users,
+  User,
 } from 'lucide-react';
 
 export const NAV_LINKS = [
@@ -18,6 +19,7 @@ export const NAV_LINKS = [
   { href: '/personal-trainer', label: 'AI Personal Trainer', icon: Bot, description: "Get AI-powered fitness plans."},
   { href: '/tracking', label: 'Tracking', icon: ClipboardList, description: "Track your diet and exercise."},
   { href: '/feed', label: 'Social Feed', icon: Users, description: "Connect with the community." },
+  { href: '/profile', label: 'Profile', icon: User, description: 'Manage your account settings.' },
 ];
 
 export const videoData = [

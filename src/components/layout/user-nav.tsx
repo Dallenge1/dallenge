@@ -15,6 +15,7 @@ import {
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '../providers/auth-provider';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function UserNav() {
   const userAvatar = PlaceHolderImages.find((i) => i.id === 'user-avatar-1');
@@ -47,7 +48,9 @@ export default function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>Profile</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/profile">Profile</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem>Settings</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

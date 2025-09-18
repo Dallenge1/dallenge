@@ -42,16 +42,21 @@ export default function Chatbot() {
 
     const currentInput = input;
     const userMessage: Message = { role: 'user', content: currentInput };
-    const historyForApi = [...messages, userMessage];
+    const newMessages = [...messages, userMessage];
     
-    setMessages(historyForApi);
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      // Pass the previous messages as history and the new one as the message
+      // Convert messages to the format expected by the AI flow
+      const historyForApi = messages.map(m => ({
+        role: m.role,
+        content: [{ text: m.content }],
+      }));
+
       const response = await chatAction({
-        history: messages,
+        history: historyForApi,
         message: currentInput,
       });
       const assistantMessage: Message = { role: 'model', content: response };

@@ -13,7 +13,11 @@ import {z} from 'genkit';
 
 const MessageSchema = z.object({
   role: z.enum(['user', 'model']),
-  content: z.string(),
+  content: z.array(
+    z.object({
+      text: z.string(),
+    })
+  ),
 });
 
 const ChatInputSchema = z.object({
@@ -55,7 +59,7 @@ const chatFlow = ai.defineFlow(
   async ({history, message}) => {
     const {output} = await ai.generate({
       system: systemPrompt,
-      history: history?.map(h => ({role: h.role, parts: [{text: h.content}]})),
+      history: history,
       prompt: message,
     });
     return output?.text ?? 'Sorry, I could not process that. Please try again.';

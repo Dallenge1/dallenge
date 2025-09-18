@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -35,19 +35,21 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     try {
       const response = await chatAction({
-        history: messages.map(m => ({ role: m.role, content: m.content })),
+        history: newMessages.map(m => ({ role: m.role, content: m.content })),
         message: currentInput,
       });
       const assistantMessage: Message = { role: 'model', content: response };
@@ -59,8 +61,8 @@ export default function Chatbot() {
         description: 'Could not get a response. Please try again.',
       });
        // Restore user message to input if sending fails
-       setInput(currentInput);
        setMessages(prev => prev.slice(0, prev.length -1));
+       setInput(currentInput);
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +74,15 @@ export default function Chatbot() {
       setMessages([INITIAL_MESSAGE]);
     }
   }, [isOpen]);
+  
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTo({
+            top: scrollAreaRef.current.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+  }, [messages]);
 
   return (
     <>
@@ -88,7 +99,7 @@ export default function Chatbot() {
           <SheetHeader>
             <SheetTitle className='flex items-center gap-2'><Bot /> AWION</SheetTitle>
           </SheetHeader>
-          <ScrollArea className="flex-1 pr-4 -mr-6">
+          <ScrollArea className="flex-1 pr-4 -mr-6" ref={scrollAreaRef}>
             <div className="space-y-4 p-4">
               {messages.map((message, index) => (
                 <div

@@ -42,13 +42,14 @@ export default function Chatbot() {
 
     const currentInput = input;
     const userMessage: Message = { role: 'user', content: currentInput };
-    const newMessages = [...messages, userMessage];
+    const historyForApi = [...messages, userMessage];
     
-    setMessages(newMessages);
+    setMessages(historyForApi);
     setInput('');
     setIsLoading(true);
 
     try {
+      // Pass the previous messages as history and the new one as the message
       const response = await chatAction({
         history: messages,
         message: currentInput,
@@ -78,7 +79,7 @@ export default function Chatbot() {
   
   useEffect(() => {
     if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTo({
+        scrollAreaRef.current.parentElement?.scrollTo({
             top: scrollAreaRef.current.scrollHeight,
             behavior: 'smooth'
         });
@@ -100,8 +101,8 @@ export default function Chatbot() {
           <SheetHeader>
             <SheetTitle className='flex items-center gap-2'><Bot /> AWION</SheetTitle>
           </SheetHeader>
-          <ScrollArea className="flex-1 pr-4 -mr-6" ref={scrollAreaRef}>
-            <div className="space-y-4 p-4">
+          <ScrollArea className="flex-1 pr-4 -mr-6" >
+            <div className="space-y-4 p-4" ref={scrollAreaRef}>
               {messages.map((message, index) => (
                 <div
                   key={index}

@@ -48,8 +48,11 @@ export default function Chatbot() {
     setIsLoading(true);
 
     try {
+      // The `messages` state already includes the initial message.
+      // We pass the conversation history (excluding the latest user message)
+      // and the new message separately.
       const response = await chatAction({
-        history: newMessages.map(m => ({ role: m.role, content: m.content })),
+        history: messages,
         message: currentInput,
       });
       const assistantMessage: Message = { role: 'model', content: response };

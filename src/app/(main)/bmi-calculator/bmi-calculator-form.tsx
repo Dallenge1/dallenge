@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -48,6 +49,8 @@ export default function BmiCalculatorForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      height: undefined,
+      weight: undefined,
       unit: 'metric',
     },
   });
@@ -85,6 +88,16 @@ export default function BmiCalculatorForm() {
 
   const unit = form.watch('unit');
 
+  const handleUnitChange = (newUnit: 'metric' | 'imperial') => {
+    form.setValue('unit', newUnit);
+    setBmiResult(null);
+    form.reset({
+      height: undefined,
+      weight: undefined,
+      unit: newUnit,
+    });
+  };
+
   return (
     <Card>
       <Form {...form}>
@@ -102,11 +115,7 @@ export default function BmiCalculatorForm() {
                     <Button
                       type="button"
                       variant={field.value === 'metric' ? 'default' : 'outline'}
-                      onClick={() => {
-                        field.onChange('metric');
-                        setBmiResult(null);
-                        form.reset({ ...form.getValues(), height: undefined, weight: undefined, unit: 'metric' });
-                      }}
+                      onClick={() => handleUnitChange('metric')}
                       className="flex-1"
                     >
                       Metric
@@ -114,11 +123,7 @@ export default function BmiCalculatorForm() {
                     <Button
                       type="button"
                       variant={field.value === 'imperial' ? 'default' : 'outline'}
-                      onClick={() => {
-                        field.onChange('imperial');
-                        setBmiResult(null);
-                        form.reset({ ...form.getValues(), height: undefined, weight: undefined, unit: 'imperial' });
-                      }}
+                      onClick={() => handleUnitChange('imperial')}
                       className="flex-1"
                     >
                       Imperial

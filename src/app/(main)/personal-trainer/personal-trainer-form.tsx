@@ -54,8 +54,8 @@ export default function PersonalTrainerForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      age: undefined,
-      weight: undefined,
+      age: '' as any,
+      weight: '' as any,
       fitnessLevel: 'Beginner',
       goals: '',
     },

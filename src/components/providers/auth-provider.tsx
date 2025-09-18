@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -10,8 +9,9 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  signInWithPopup,
 } from 'firebase/auth';
-import { auth as firebaseAuth } from '@/lib/firebase';
+import { auth as firebaseAuth, googleProvider } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
 
 interface AuthContextType {
@@ -19,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
   signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
 }
 
@@ -62,6 +63,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const signInWithGoogle = () => {
+    setLoading(true);
+    try {
+      return signInWithPopup(authInstance, googleProvider);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const logOut = () => {
     setLoading(true);
     try {
@@ -76,6 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     logOut,
   };
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -40,15 +41,14 @@ export default function Chatbot() {
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     try {
-      // Filter out the initial message before sending to the action
-      const chatHistory = messages.filter(m => m.content !== INITIAL_MESSAGE.content);
       const response = await chatAction({
-        history: chatHistory.map(m => ({ role: m.role, content: m.content })),
-        message: input,
+        history: messages.map(m => ({ role: m.role, content: m.content })),
+        message: currentInput,
       });
       const assistantMessage: Message = { role: 'model', content: response };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -59,7 +59,7 @@ export default function Chatbot() {
         description: 'Could not get a response. Please try again.',
       });
        // Restore user message to input if sending fails
-       setInput(input);
+       setInput(currentInput);
        setMessages(prev => prev.slice(0, prev.length -1));
     } finally {
       setIsLoading(false);

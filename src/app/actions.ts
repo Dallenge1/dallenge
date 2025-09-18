@@ -5,6 +5,7 @@ import {
   type PersonalizedFitnessRecommendationsInput,
   type PersonalizedFitnessRecommendationsOutput,
 } from '@/ai/flows/personalized-fitness-recommendations';
+import { redirect } from 'next/navigation';
 
 export async function getRecommendationsAction(
   input: PersonalizedFitnessRecommendationsInput
@@ -16,4 +17,8 @@ export async function getRecommendationsAction(
     console.error('Error getting recommendations:', error);
     throw new Error('Failed to get recommendations. Please try again.');
   }
+}
+
+export async function navigateToDashboard() {
+  redirect('/dashboard');
 }

@@ -22,18 +22,16 @@ export default function SidebarNav() {
 
         return (
           <SidebarMenuItem key={link.href}>
-            <Link href={link.href} passHref legacyBehavior>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive}
-                tooltip={link.label}
-              >
-                <a>
-                  <link.icon />
-                  <span>{link.label}</span>
-                </a>
-              </SidebarMenuButton>
-            </Link>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive}
+              tooltip={link.label}
+            >
+              <Link href={link.href}>
+                <link.icon />
+                <span>{link.label}</span>
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         );
       })}

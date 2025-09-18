@@ -1,3 +1,70 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "user-avatar-1",
+      "description": "Avatar for the main user",
+      "imageUrl": "https://picsum.photos/seed/avatar1/100/100",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "user-avatar-2",
+      "description": "Avatar for Jane Doe",
+      "imageUrl": "https://picsum.photos/seed/avatar2/100/100",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "user-avatar-3",
+      "description": "Avatar for John Smith",
+      "imageUrl": "https://picsum.photos/seed/avatar3/100/100",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "user-avatar-4",
+      "description": "Avatar for Emily White",
+      "imageUrl": "https://picsum.photos/seed/avatar4/100/100",
+      "imageHint": "person smiling"
+    },
+    {
+      "id": "video-thumb-1",
+      "description": "Thumbnail for Quantum Physics video",
+      "imageUrl": "https://picsum.photos/seed/quantum/400/225",
+      "imageHint": "abstract science"
+    },
+    {
+      "id": "video-thumb-2",
+      "description": "Thumbnail for Ancient Rome video",
+      "imageUrl": "https://picsum.photos/seed/rome/400/225",
+      "imageHint": "ancient architecture"
+    },
+    {
+      "id": "video-thumb-3",
+      "description": "Thumbnail for Javascript video",
+      "imageUrl": "https://picsum.photos/seed/javascript/400/225",
+      "imageHint": "code screen"
+    },
+    {
+      "id": "video-thumb-4",
+      "description": "Thumbnail for Meditation video",
+      "imageUrl": "https://picsum.photos/seed/meditation/400/225",
+      "imageHint": "serene nature"
+    },
+    {
+      "id": "game-thumb-1",
+      "description": "Thumbnail for Memory game",
+      "imageUrl": "https://picsum.photos/seed/memory/600/400",
+      "imageHint": "abstract pattern"
+    },
+    {
+      "id": "game-thumb-2",
+      "description": "Thumbnail for Pattern Recognition game",
+      "imageUrl": "https://picsum.photos/seed/pattern/600/400",
+      "imageHint": "geometric design"
+    },
+    {
+      "id": "game-thumb-3",
+      "description": "Thumbnail for Logic Puzzles",
+      "imageUrl": "https://picsum.photos/seed/logic/600/400",
+      "imageHint": "brain maze"
+    }
+  ]
 }

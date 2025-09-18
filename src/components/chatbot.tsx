@@ -40,17 +40,15 @@ export default function Chatbot() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = { role: 'user', content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
     const currentInput = input;
+    const userMessage: Message = { role: 'user', content: currentInput };
+    const newMessages = [...messages, userMessage];
+    
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      // The `messages` state already includes the initial message.
-      // We pass the conversation history (excluding the latest user message)
-      // and the new message separately.
       const response = await chatAction({
         history: messages,
         message: currentInput,
@@ -64,7 +62,7 @@ export default function Chatbot() {
         description: 'Could not get a response. Please try again.',
       });
        // Restore user message to input if sending fails
-       setMessages(prev => prev.slice(0, prev.length -1));
+       setMessages(messages);
        setInput(currentInput);
     } finally {
       setIsLoading(false);

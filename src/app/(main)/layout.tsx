@@ -1,6 +1,7 @@
 import AppHeader from '@/components/layout/app-header';
 import AppSidebar from '@/components/layout/app-sidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import Chatbot from '@/components/chatbot';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
         </div>
+        <Chatbot />
       </SidebarInset>
     </SidebarProvider>
   );

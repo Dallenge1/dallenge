@@ -57,9 +57,20 @@ const chatFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async ({history, message}) => {
+    const historyWithSystemPrompt = [
+      {
+        role: 'user' as const,
+        content: [{ text: systemPrompt }],
+      },
+      {
+        role: 'model' as const,
+        content: [{ text: 'I understand. I will act as AWION, a helpful AI assistant for the DAWION application.' }],
+      },
+      ...(history || []),
+    ];
+
     const {output} = await ai.generate({
-      system: systemPrompt,
-      history: history,
+      history: historyWithSystemPrompt,
       prompt: message,
     });
     return output?.text ?? 'Sorry, I could not process that. Please try again.';

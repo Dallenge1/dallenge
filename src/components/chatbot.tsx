@@ -51,15 +51,18 @@ export default function Chatbot() {
     setInput('');
     setIsLoading(true);
     
-    // Convert UI messages to the format expected by the AI flow
-    const historyForApi: HistoryMessage[] = newMessages.slice(0, -1).map(m => ({
-      role: m.role,
-      content: [{ text: m.content }],
-    }));
+    const historyForApi: HistoryMessage[] = newMessages
+      .filter((m) => m.role !== 'model' || m.content !== INITIAL_MESSAGE.content) // Exclude initial greeting
+      .map(m => ({
+        role: m.role,
+        content: [{ text: m.content }],
+      }));
 
     try {
+      // Remove last message from history as it's the current prompt
+      const finalHistory = historyForApi.slice(0, -1);
       const response = await chatAction({
-        history: historyForApi,
+        history: finalHistory,
         message: currentInput,
       });
       const assistantMessage: Message = { role: 'model', content: response };

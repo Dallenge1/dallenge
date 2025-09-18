@@ -17,11 +17,15 @@ import { Bot, Send, User } from 'lucide-react';
 import { chatAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from './ui/skeleton';
+import type { ChatInput } from '@/ai/flows/chat';
 
 type Message = {
   role: 'user' | 'model';
   content: string;
 };
+
+type HistoryMessage = ChatInput['history'] extends (infer U)[] | undefined ? U : never;
+
 
 const INITIAL_MESSAGE: Message = {
   role: 'model',
@@ -40,21 +44,20 @@ export default function Chatbot() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const currentInput = input;
-    const userMessage: Message = { role: 'user', content: currentInput };
+    const userMessage: Message = { role: 'user', content: input };
     const newMessages = [...messages, userMessage];
-    
     setMessages(newMessages);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
+    
+    // Convert UI messages to the format expected by the AI flow
+    const historyForApi: HistoryMessage[] = newMessages.slice(0, -1).map(m => ({
+      role: m.role,
+      content: [{ text: m.content }],
+    }));
 
     try {
-      // Convert messages to the format expected by the AI flow
-      const historyForApi = messages.map(m => ({
-        role: m.role,
-        content: [{ text: m.content }],
-      }));
-
       const response = await chatAction({
         history: historyForApi,
         message: currentInput,
@@ -67,13 +70,14 @@ export default function Chatbot() {
         title: 'Error',
         description: 'Could not get a response. Please try again.',
       });
-       // Restore user message to input if sending fails
-       setMessages(messages);
-       setInput(currentInput);
+      // Restore user message to input if sending fails
+      setMessages(messages);
+      setInput(currentInput);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // Reset to initial message when sheet is closed
   useEffect(() => {

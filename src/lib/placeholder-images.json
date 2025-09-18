@@ -25,6 +25,48 @@
       "imageHint": "person smiling"
     },
     {
+      "id": "user-avatar-5",
+      "description": "Avatar for Alex Johnson",
+      "imageUrl": "https://picsum.photos/seed/avatar5/100/100",
+      "imageHint": "professional portrait"
+    },
+    {
+      "id": "user-avatar-6",
+      "description": "Avatar for Maria Garcia",
+      "imageUrl": "https://picsum.photos/seed/avatar6/100/100",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "user-avatar-7",
+      "description": "Avatar for David Smith",
+      "imageUrl": "https://picsum.photos/seed/avatar7/100/100",
+      "imageHint": "man glasses"
+    },
+    {
+      "id": "user-avatar-8",
+      "description": "Avatar for Sophia Wang",
+      "imageUrl": "https://picsum.photos/seed/avatar8/100/100",
+      "imageHint": "woman asia"
+    },
+    {
+      "id": "user-avatar-9",
+      "description": "Avatar for Daniel Kim",
+      "imageUrl": "https://picsum.photos/seed/avatar9/100/100",
+      "imageHint": "man korea"
+    },
+    {
+      "id": "user-avatar-10",
+      "description": "Avatar for Michael Brown",
+      "imageUrl": "https://picsum.photos/seed/avatar10/100/100",
+      "imageHint": "man smiling"
+    },
+    {
+      "id": "user-avatar-11",
+      "description": "Avatar for Chris Lee",
+      "imageUrl": "https://picsum.photos/seed/avatar11/100/100",
+      "imageHint": "person casual"
+    },
+    {
       "id": "video-thumb-1",
       "description": "Thumbnail for Quantum Physics video",
       "imageUrl": "https://picsum.photos/seed/quantum/400/225",

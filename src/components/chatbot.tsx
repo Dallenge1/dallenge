@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -22,9 +22,15 @@ type Message = {
   content: string;
 };
 
+const INITIAL_MESSAGE: Message = {
+  role: 'model',
+  content:
+    'Hello! I am AWION, your AI assistant. How can I help you navigate the features of the DAWION application today?',
+};
+
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -38,8 +44,10 @@ export default function Chatbot() {
     setIsLoading(true);
 
     try {
+      // Filter out the initial message before sending to the action
+      const chatHistory = messages.filter(m => m.content !== INITIAL_MESSAGE.content);
       const response = await chatAction({
-        history: messages.map(m => ({ role: m.role, content: m.content })),
+        history: chatHistory.map(m => ({ role: m.role, content: m.content })),
         message: input,
       });
       const assistantMessage: Message = { role: 'model', content: response };
@@ -50,10 +58,20 @@ export default function Chatbot() {
         title: 'Error',
         description: 'Could not get a response. Please try again.',
       });
+       // Restore user message to input if sending fails
+       setInput(input);
+       setMessages(prev => prev.slice(0, prev.length -1));
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Reset to initial message when sheet is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setMessages([INITIAL_MESSAGE]);
+    }
+  }, [isOpen]);
 
   return (
     <>
@@ -68,7 +86,7 @@ export default function Chatbot() {
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent className="flex flex-col">
           <SheetHeader>
-            <SheetTitle className='flex items-center gap-2'><Bot /> AI Assistant</SheetTitle>
+            <SheetTitle className='flex items-center gap-2'><Bot /> AWION</SheetTitle>
           </SheetHeader>
           <ScrollArea className="flex-1 pr-4 -mr-6">
             <div className="space-y-4 p-4">

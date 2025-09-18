@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ThemeScript } from '@/components/theme-script';
 import { AuthProvider } from '@/components/providers/auth-provider';
+import Chatbot from '@/components/chatbot';
 
 export const metadata: Metadata = {
   title: 'DAWION',
@@ -30,6 +31,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             {children}
+            <Chatbot />
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

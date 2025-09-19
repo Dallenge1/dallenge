@@ -10,8 +10,6 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
-  doc,
-  getDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,9 +20,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageCircle, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
-import { likePost, addComment } from '@/app/actions';
+import { likePost } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import Comment from '../../feed/comment';
 import Link from 'next/link';
 
 type UserData = {
@@ -65,19 +62,6 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (!userId) return;
 
-    // Fetch user data
-    const fetchUserData = async () => {
-      try {
-        // We can't get user data directly from Auth by UID on the client
-        // So, we'll get it from the first post they made.
-        // In a real app, you'd store user profiles in Firestore.
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-    
-    fetchUserData();
-
     // Fetch user's posts
     const q = query(
       collection(db, 'posts'),
@@ -88,8 +72,10 @@ export default function UserProfilePage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
       let userData: UserData | null = null;
+      
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        // If we haven't set the user data yet, get it from the first post
         if (!userData) {
           userData = {
             displayName: data.authorName,
@@ -108,6 +94,7 @@ export default function UserProfilePage() {
           comments: data.comments || [],
         });
       });
+      
       setUser(userData);
       setPosts(postsData);
       setLoading(false);
@@ -132,12 +119,20 @@ export default function UserProfilePage() {
 
   const handleShare = async (postId: string) => {
     if (navigator.clipboard && window.isSecureContext) {
-      const postUrl = `${window.location.origin}/feed#${postId}`;
-      await navigator.clipboard.writeText(postUrl);
-      toast({
-          title: 'Link Copied',
-          description: 'The link to the post has been copied to your clipboard.',
-      });
+      try {
+        const postUrl = `${window.location.origin}/feed#${postId}`;
+        await navigator.clipboard.writeText(postUrl);
+        toast({
+            title: 'Link Copied',
+            description: 'The link to the post has been copied to your clipboard.',
+        });
+      } catch (err) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not copy link.',
+        });
+      }
     } else {
         toast({
             variant: 'destructive',

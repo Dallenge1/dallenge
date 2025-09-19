@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useTransition } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   collection,
   query,
@@ -23,6 +23,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { likePost } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { getOrCreateChat } from '@/app/chat-actions';
 
 type UserData = {
   displayName: string;
@@ -51,6 +52,7 @@ type Post = {
 export default function UserProfilePage() {
   const params = useParams();
   const userId = params.userId as string;
+  const router = useRouter();
 
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -58,6 +60,7 @@ export default function UserProfilePage() {
   const [user, setUser] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!userId) return;
@@ -173,9 +176,18 @@ export default function UserProfilePage() {
   }
   
   const handleMessage = () => {
-    toast({
-        title: 'Coming Soon!',
-        description: 'Direct messaging is not yet implemented.',
+    if (!currentUser) return;
+    startTransition(async () => {
+        try {
+            const chatId = await getOrCreateChat(currentUser.uid, userId);
+            router.push(`/chat/${chatId}`);
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not start chat. Please try again.',
+            });
+        }
     });
   };
 
@@ -192,7 +204,9 @@ export default function UserProfilePage() {
           <p className="text-muted-foreground">Viewing user's posts</p>
         </div>
          {currentUser && currentUser.uid !== userId && (
-            <Button onClick={handleMessage}>Message</Button>
+            <Button onClick={handleMessage} disabled={isPending}>
+                {isPending ? 'Starting chat...' : 'Message'}
+            </Button>
         )}
       </header>
 

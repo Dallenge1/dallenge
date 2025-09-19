@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -45,18 +45,27 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
   const [isLoading, setIsLoading] = useState(initialLoading || !initialPost);
 
   useEffect(() => {
-    if (!initialPost && postId) {
-      const fetchPost = async () => {
-        setIsLoading(true);
-        const postRef = doc(db, 'posts', postId);
-        const postSnap = await getDoc(postRef);
-        if (postSnap.exists()) {
-          const data = postSnap.data();
-          setPost({ id: postSnap.id, ...data } as Post);
+    if (postId) {
+      const postRef = doc(db, 'posts', postId);
+      const unsubscribe = onSnapshot(postRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setPost({ id: docSnap.id, ...data } as Post);
         }
         setIsLoading(false);
-      };
-      fetchPost();
+      });
+      // Fallback for initial load if no snapshot comes through immediately
+      if (!initialPost) {
+        getDoc(postRef).then(docSnap => {
+           if (docSnap.exists()) {
+             setPost({ id: docSnap.id, ...docSnap.data() } as Post);
+           }
+           setIsLoading(false);
+        });
+      } else {
+        setIsLoading(false);
+      }
+      return () => unsubscribe();
     }
   }, [postId, initialPost]);
 
@@ -76,6 +85,11 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-20 w-full" />
             </CardContent>
+             <CardFooter className="flex justify-between border-t p-2">
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-24" />
+            </CardFooter>
         </Card>
     );
   }

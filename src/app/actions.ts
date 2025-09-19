@@ -60,12 +60,10 @@ export async function likePost(postId: string, userId: string) {
       const postData = postSnap.data();
       const likes = postData.likes || [];
       if (likes.includes(userId)) {
-        // User has already liked the post, so unlike it
         await updateDoc(postRef, {
           likes: arrayRemove(userId),
         });
       } else {
-        // User has not liked the post, so like it
         await updateDoc(postRef, {
           likes: arrayUnion(userId),
         });
@@ -98,5 +96,51 @@ export async function addComment(
   } catch (error) {
     console.error('Error adding comment:', error);
     throw new Error('Failed to add comment.');
+  }
+}
+
+export async function acceptChallenge(postId: string, userId: string) {
+  try {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, {
+      challengeAcceptedBy: arrayUnion(userId),
+    });
+    revalidatePath('/feed');
+  } catch (error) {
+    console.error('Error accepting challenge:', error);
+    throw new Error('Failed to accept challenge.');
+  }
+}
+
+export async function replyToChallenge(
+  challengePostId: string,
+  reply: {
+    authorId: string;
+    authorName: string;
+    authorAvatarUrl: string;
+    content: string;
+    imageUrl: string | null;
+  }
+) {
+  try {
+    const replyPostRef = await addDoc(collection(db, 'posts'), {
+      ...reply,
+      timestamp: serverTimestamp(),
+      likes: [],
+      comments: [],
+      type: 'post', // Replies are regular posts
+      isChallengeReply: true,
+      originalChallengeId: challengePostId,
+    });
+
+    const challengePostRef = doc(db, 'posts', challengePostId);
+    await updateDoc(challengePostRef, {
+      challengeReplies: arrayUnion(replyPostRef.id),
+    });
+
+    revalidatePath('/feed');
+  } catch (error) {
+    console.error('Error replying to challenge:', error);
+    throw new Error('Failed to reply to challenge.');
   }
 }

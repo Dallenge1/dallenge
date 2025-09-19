@@ -64,7 +64,6 @@ export default function ProfilePage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [originalFile, setOriginalFile] = useState<File | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -96,19 +95,18 @@ export default function ProfilePage() {
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      setOriginalFile(file);
       let imageDataUrl = await readFile(file);
       setImageSrc(imageDataUrl);
     }
   };
 
   const handleSaveCrop = async () => {
-    if (!imageSrc || !croppedAreaPixels || !originalFile) return;
+    if (!imageSrc || !croppedAreaPixels) return;
 
     setIsUploading(true);
     try {
       const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-      await updateUserPhoto(croppedImageBlob, originalFile.name);
+      await updateUserPhoto(croppedImageBlob);
       toast({
         title: 'Success',
         description: 'Profile picture updated successfully!',

@@ -11,6 +11,8 @@ import {
   Timestamp,
   doc,
   getDoc,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/providers/auth-provider';

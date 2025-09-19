@@ -1,11 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access for all users for the next 30 days.
-    // WARNING: This is insecure for production.
-    // You should secure your database before launching.
+    // This rule allows anyone to read and write to the entire database.
+    // It is insecure and should not be used in production.
+    // This is a temporary measure to unblock development.
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 10, 19);
+      allow read, write: if true;
     }
   }
 }

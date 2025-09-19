@@ -44,6 +44,7 @@ import {
 import React, { useState } from 'react';
 import ImageCropDialog from './image-crop-dialog';
 import { getCroppedImg } from './crop-image';
+import { Area } from 'react-easy-crop';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -62,7 +63,7 @@ export default function ProfilePage() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<ProfileFormValues>({
@@ -98,6 +99,10 @@ export default function ProfilePage() {
       let imageDataUrl = await readFile(file);
       setImageSrc(imageDataUrl);
     }
+  };
+
+  const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
   };
 
   const handleSaveCrop = async () => {
@@ -137,9 +142,7 @@ export default function ProfilePage() {
           zoom={zoom}
           setCrop={setCrop}
           setZoom={setZoom}
-          onCroppedAreaChange={(croppedArea, croppedAreaPixels) => {
-            setCroppedAreaPixels(croppedAreaPixels);
-          }}
+          onCroppedAreaChange={onCropComplete}
           onClose={() => setImageSrc(null)}
           onSave={handleSaveCrop}
           isLoading={isUploading}

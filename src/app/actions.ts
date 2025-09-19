@@ -86,9 +86,8 @@ export async function addCoin(postId: string, userId: string) {
 
     if (postSnap.exists()) {
       const postData = postSnap.data();
-      if(postData.type !== 'challenge') throw new Error("Can only add coins to challenges.");
-      
       const coins = postData.coins || [];
+      
       if (coins.includes(userId)) {
         // User already gave a coin, so we remove it (toggle behavior)
         await updateDoc(postRef, {
@@ -159,6 +158,7 @@ export async function replyToChallenge(
       timestamp: serverTimestamp(),
       likes: [],
       comments: [],
+      coins: [],
       type: 'post', // Replies are regular posts
       isChallengeReply: true,
       originalChallengeId: challengePostId,

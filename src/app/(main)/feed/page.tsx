@@ -306,7 +306,7 @@ export default function FeedPage() {
 
   const renderPostCard = (post: Post) => {
     const hasLiked = user ? post.likes.includes(user.uid) : false;
-    const hasGivenCoin = user && post.type === 'challenge' ? post.coins?.includes(user.uid) : false;
+    const hasGivenCoin = user ? post.coins?.includes(user.uid) : false;
     const hasAcceptedChallenge = user && post.type === 'challenge' ? post.challengeAcceptedBy?.includes(user.uid) : false;
     const replyState = replyStates[post.id] || {content: '', imageFile: null, imagePreview: null};
     const isAuthor = user?.uid === post.authorId;
@@ -353,7 +353,7 @@ export default function FeedPage() {
           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
         </CardContent>
         <CardFooter className="flex justify-between border-t p-2">
-           {post.type === 'challenge' ? (
+           {post.type === 'challenge' || post.isChallengeReply ? (
             <Button variant="ghost" className="flex-1" onClick={() => handleAddCoin(post.id)} disabled={isPending || !user}>
               <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-amber-500')} />
               Coin ({post.coins?.length ?? 0})

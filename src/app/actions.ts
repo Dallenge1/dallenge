@@ -27,7 +27,8 @@ export async function createPost(
   authorName: string,
   authorAvatarUrl: string,
   content: string,
-  imageUrl?: string | null
+  imageUrl: string | null,
+  postType: 'post' | 'challenge' = 'post'
 ) {
   try {
     await addDoc(collection(db, 'posts'), {
@@ -39,6 +40,9 @@ export async function createPost(
       timestamp: serverTimestamp(),
       likes: [],
       comments: [],
+      type: postType,
+      challengeAcceptedBy: postType === 'challenge' ? [] : undefined,
+      challengeReplies: postType === 'challenge' ? [] : undefined,
     });
     revalidatePath('/feed');
   } catch (error) {

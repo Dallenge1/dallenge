@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2 } from 'lucide-react';
+import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { createPost, likePost, addComment } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Comment from './comment';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type CommentData = {
   authorName: string;
@@ -42,6 +45,7 @@ type Post = {
   likes: string[];
   comments: CommentData[];
   imageUrl?: string;
+  type: 'post' | 'challenge';
 };
 
 export default function FeedPage() {
@@ -57,6 +61,8 @@ export default function FeedPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isChallenge, setIsChallenge] = useState(false);
+
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
@@ -74,6 +80,7 @@ export default function FeedPage() {
           likes: data.likes || [],
           comments: data.comments || [],
           imageUrl: data.imageUrl,
+          type: data.type || 'post',
         });
       });
       setPosts(postsData);
@@ -152,19 +159,21 @@ export default function FeedPage() {
           user.displayName || 'Anonymous',
           user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
           content,
-          imageUrl
+          imageUrl,
+          isChallenge ? 'challenge' : 'post'
         );
         setContent('');
         clearImage();
+        setIsChallenge(false);
         toast({
           title: 'Success',
-          description: 'Your post has been published.',
+          description: `Your ${isChallenge ? 'challenge' : 'post'} has been published.`,
         });
       } catch (error) {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Failed to create post. Please try again.',
+          description: `Failed to create ${isChallenge ? 'challenge' : 'post'}. Please try again.`,
         });
       }
     });
@@ -262,13 +271,126 @@ export default function FeedPage() {
     return <div className={cn('cursor-default', className)}>{children}</div>;
   };
 
+  const renderPostCard = (post: Post) => {
+    const hasLiked = user ? post.likes.includes(user.uid) : false;
+    return (
+      <Card key={post.id} id={post.id} className="w-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {renderProfileLink(
+                post,
+                <Avatar>
+                  <AvatarImage
+                    src={post.authorAvatarUrl}
+                    alt={post.authorName}
+                  />
+                  <AvatarFallback>
+                    {post.authorName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div>
+                 {renderProfileLink(
+                  post,
+                  <p className="font-semibold hover:underline">
+                    {post.authorName}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {post.timestamp
+                    ? formatDistanceToNow(post.timestamp.toDate(), {
+                        addSuffix: true,
+                      })
+                    : 'just now'}
+                </p>
+              </div>
+            </div>
+            {post.type === 'challenge' && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-amber-500">
+                    <Trophy className="h-5 w-5" />
+                    <span>Challenge</span>
+                </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
+          {post.imageUrl && (
+            <div className="relative mt-2 aspect-video overflow-hidden rounded-lg border">
+               <Image src={post.imageUrl} alt="Post image" fill className="object-cover" />
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex justify-between border-t p-2">
+          <Button
+            variant="ghost"
+            className="flex-1"
+            onClick={() => handleLike(post.id)}
+            disabled={isPending || !user}
+          >
+            <Heart
+              className={cn(
+                'mr-2 h-4 w-4',
+                hasLiked && 'fill-red-500 text-red-500'
+              )}
+            />
+            Like ({post.likes.length})
+          </Button>
+          <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}>
+            <MessageCircle className="mr-2 h-4 w-4" /> Comment ({post.comments.length})
+          </Button>
+          <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
+            <Share2 className="mr-2 h-4 w-4" /> Share
+          </Button>
+        </CardFooter>
+
+        {activeCommentBox === post.id && (
+          <CardContent className="p-4 border-t">
+              <div className="flex gap-4">
+                <Avatar>
+                  <AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" />
+                  <AvatarFallback>
+                    {user?.displayName?.charAt(0) ?? 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="w-full space-y-2">
+                  <Textarea
+                    placeholder="Write a comment..."
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    disabled={isPending}
+                  />
+                  <div className="flex justify-end">
+                    <Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>
+                      {isPending ? 'Commenting...' : 'Comment'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+            {post.comments.length > 0 && (
+                <div className="mt-4 space-y-4">
+                    {post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (
+                        <Comment key={index} comment={comment} />
+                    ))}
+                </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+    );
+  }
+
+  const regularPosts = posts.filter(p => p.type === 'post');
+  const challengePosts = posts.filter(p => p.type === 'challenge');
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Social Feed</h1>
         <p className="text-muted-foreground">
-          Connect with the community and share your thoughts.
+          Connect with the community, share your thoughts, and take on challenges.
         </p>
       </header>
 
@@ -282,7 +404,7 @@ export default function FeedPage() {
           </Avatar>
           <div className="w-full space-y-2">
             <Textarea
-              placeholder="What's on your mind?"
+              placeholder={isChallenge ? "Describe your challenge..." : "What's on your mind?"}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               disabled={isPending || !user}
@@ -295,161 +417,109 @@ export default function FeedPage() {
                     </Button>
                 </div>
             )}
-            <div className="flex justify-end items-center gap-2">
-              <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/png, image/jpeg, image/gif" className="hidden" disabled={isPending}/>
-              <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user}>
-                <ImageIcon className="h-5 w-5" />
-              </Button>
-              <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile) || !user}>
-                {isPending ? <Loader2 className="animate-spin"/> : 'Post'}
-              </Button>
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center space-x-2">
+                <Switch id="challenge-mode" checked={isChallenge} onCheckedChange={setIsChallenge} disabled={isPending || !user}/>
+                <Label htmlFor="challenge-mode" className={cn(isChallenge && "text-amber-500 font-semibold")}>Challenge</Label>
+              </div>
+              <div className='flex items-center gap-2'>
+                <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/png, image/jpeg, image/gif" className="hidden" disabled={isPending}/>
+                <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user}>
+                  <ImageIcon className="h-5 w-5" />
+                </Button>
+                <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile) || !user}>
+                  {isPending ? <Loader2 className="animate-spin"/> : (isChallenge ? 'Post Challenge' : 'Post')}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        {loading ? (
-           Array.from({ length: 3 }).map((_, index) => (
-             <Card key={index}>
-               <CardHeader>
-                 <div className="flex items-center gap-3">
-                   <Skeleton className="h-10 w-10 rounded-full" />
-                   <div className="space-y-2">
-                     <Skeleton className="h-4 w-[150px]" />
-                     <Skeleton className="h-3 w-[100px]" />
-                   </div>
-                 </div>
-               </CardHeader>
-               <CardContent>
-                 <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                 </div>
-               </CardContent>
-               <CardFooter className="flex justify-between border-t p-2">
-                    <Skeleton className="h-8 w-24" />
-                    <Skeleton className="h-8 w-24" />
-                    <Skeleton className="h-8 w-24" />
-               </CardFooter>
-             </Card>
-           ))
-        ) : (
-          posts.map((post) => {
-            const hasLiked = user ? post.likes.includes(user.uid) : false;
-            return (
-              <Card key={post.id} id={post.id} className="w-full">
+      <Tabs defaultValue="posts" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="posts">Posts</TabsTrigger>
+          <TabsTrigger value="challenges">Challenges</TabsTrigger>
+        </TabsList>
+        <TabsContent value="posts" className="space-y-4 mt-4">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index}>
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    {renderProfileLink(
-                      post,
-                      <Avatar>
-                        <AvatarImage
-                          src={post.authorAvatarUrl}
-                          alt={post.authorName}
-                        />
-                        <AvatarFallback>
-                          {post.authorName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <div>
-                       {renderProfileLink(
-                        post,
-                        <p className="font-semibold hover:underline">
-                          {post.authorName}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {post.timestamp
-                          ? formatDistanceToNow(post.timestamp.toDate(), {
-                              addSuffix: true,
-                            })
-                          : 'just now'}
-                      </p>
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[150px]" />
+                      <Skeleton className="h-3 w-[100px]" />
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
-                  {post.imageUrl && (
-                    <div className="relative mt-2 aspect-video overflow-hidden rounded-lg border">
-                       <Image src={post.imageUrl} alt="Post image" layout="fill" className="object-cover" />
-                    </div>
-                  )}
+                <CardContent>
+                  <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                  </div>
                 </CardContent>
                 <CardFooter className="flex justify-between border-t p-2">
-                  <Button
-                    variant="ghost"
-                    className="flex-1"
-                    onClick={() => handleLike(post.id)}
-                    disabled={isPending || !user}
-                  >
-                    <Heart
-                      className={cn(
-                        'mr-2 h-4 w-4',
-                        hasLiked && 'fill-red-500 text-red-500'
-                      )}
-                    />
-                    Like ({post.likes.length})
-                  </Button>
-                  <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}>
-                    <MessageCircle className="mr-2 h-4 w-4" /> Comment ({post.comments.length})
-                  </Button>
-                  <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
-                    <Share2 className="mr-2 h-4 w-4" /> Share
-                  </Button>
+                      <Skeleton className="h-8 w-24" />
+                      <Skeleton className="h-8 w-24" />
+                      <Skeleton className="h-8 w-24" />
                 </CardFooter>
-
-                {activeCommentBox === post.id && (
-                  <CardContent className="p-4 border-t">
-                      <div className="flex gap-4">
-                        <Avatar>
-                          <AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" />
-                          <AvatarFallback>
-                            {user?.displayName?.charAt(0) ?? 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="w-full space-y-2">
-                          <Textarea
-                            placeholder="Write a comment..."
-                            value={commentContent}
-                            onChange={(e) => setCommentContent(e.target.value)}
-                            disabled={isPending}
-                          />
-                          <div className="flex justify-end">
-                            <Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>
-                              {isPending ? 'Commenting...' : 'Comment'}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                    {post.comments.length > 0 && (
-                        <div className="mt-4 space-y-4">
-                            {post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (
-                                <Comment key={index} comment={comment} />
-                            ))}
-                        </div>
-                    )}
-                  </CardContent>
-                )}
               </Card>
-            );
-          })
-        )}
-         {!loading && posts.length === 0 && (
-            <Card className="flex flex-col items-center justify-center p-8 text-center">
+            ))
+          ) : (
+            regularPosts.length > 0 ? (
+              regularPosts.map(renderPostCard)
+            ) : (
+              <Card className="flex flex-col items-center justify-center p-8 text-center">
+                  <CardHeader>
+                      <CornerRightDown className="h-12 w-12 text-muted-foreground mx-auto" />
+                  </CardHeader>
+                  <CardContent>
+                      <h3 className="text-lg font-semibold">No posts yet</h3>
+                      <p className="text-muted-foreground">Be the first to share something with the community!</p>
+                  </CardContent>
+              </Card>
+            )
+          )}
+        </TabsContent>
+        <TabsContent value="challenges" className="space-y-4 mt-4">
+          {loading ? (
+            Array.from({ length: 2 }).map((_, index) => (
+              <Card key={index}>
                 <CardHeader>
-                    <CornerRightDown className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[150px]" />
+                      <Skeleton className="h-3 w-[100px]" />
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                    <h3 className="text-lg font-semibold">No posts yet</h3>
-                    <p className="text-muted-foreground">Be the first to share something with the community!</p>
+                  <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                  </div>
                 </CardContent>
-            </Card>
-        )}
-      </div>
+              </Card>
+            ))
+          ) : (
+            challengePosts.length > 0 ? (
+              challengePosts.map(renderPostCard)
+            ) : (
+              <Card className="flex flex-col items-center justify-center p-8 text-center">
+                  <CardHeader>
+                      <Trophy className="h-12 w-12 text-muted-foreground mx-auto" />
+                  </CardHeader>
+                  <CardContent>
+                      <h3 className="text-lg font-semibold">No challenges yet</h3>
+                      <p className="text-muted-foreground">Be the first to post a challenge for the community!</p>
+                  </CardContent>
+              </Card>
+            )
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

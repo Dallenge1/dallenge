@@ -11,6 +11,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { Timestamp } from "firebase/firestore";
+import { User } from 'firebase/auth';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { MoreHorizontal } from 'lucide-react';
 
 type Post = {
   id: string;
@@ -26,9 +30,11 @@ type ChallengeReplyProps = {
   postId: string;
   post?: Post;
   isLoading?: boolean;
+  currentUser: User | null;
+  onDelete: (postId: string) => void;
 };
 
-export default function ChallengeReply({ postId, post: initialPost, isLoading: initialLoading = false }: ChallengeReplyProps) {
+export default function ChallengeReply({ postId, post: initialPost, isLoading: initialLoading = false, currentUser, onDelete }: ChallengeReplyProps) {
   const [post, setPost] = useState<Post | null>(initialPost || null);
   const [isLoading, setIsLoading] = useState(initialLoading || !initialPost);
 
@@ -64,24 +70,42 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
     return null; // Or some fallback UI for a post that couldn't be loaded
   }
 
+  const isAuthor = currentUser?.uid === post.authorId;
+
   return (
     <Card className="bg-background/50">
       <CardHeader className="p-3">
-        <div className="flex items-center gap-3">
-          <Link href={`/users/${post.authorId}`}>
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
-              <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
-            </Avatar>
-          </Link>
-          <div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Link href={`/users/${post.authorId}`}>
-              <p className="font-semibold text-sm hover:underline">{post.authorName}</p>
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
+                <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
+              </Avatar>
             </Link>
-            <p className="text-xs text-muted-foreground">
-              {post.timestamp ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true }) : 'just now'}
-            </p>
+            <div>
+              <Link href={`/users/${post.authorId}`}>
+                <p className="font-semibold text-sm hover:underline">{post.authorName}</p>
+              </Link>
+              <p className="text-xs text-muted-foreground">
+                {post.timestamp ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true }) : 'just now'}
+              </p>
+            </div>
           </div>
+          {isAuthor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onDelete(post.id)} className="text-destructive">
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0 space-y-2">

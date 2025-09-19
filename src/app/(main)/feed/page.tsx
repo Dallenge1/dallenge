@@ -412,8 +412,8 @@ export default function FeedPage() {
             <div className='space-y-4'>
               {post.challengeReplies.map(replyId => {
                 const replyPost = posts.find(p => p.id === replyId);
-                if (!replyPost) return <ChallengeReply key={replyId} postId={replyId} isLoading={true} />;
-                return <ChallengeReply key={replyId} post={replyPost} />;
+                if (!replyPost) return <ChallengeReply key={replyId} postId={replyId} isLoading={true} currentUser={user} onDelete={handleDeletePost} />;
+                return <ChallengeReply key={replyId} post={replyPost} currentUser={user} onDelete={handleDeletePost} />;
               })}
             </div>
           </CardContent>
@@ -422,7 +422,7 @@ export default function FeedPage() {
     );
   }
 
-  const regularPosts = posts.filter(p => p.type === 'post' && !p.isChallengeReply);
+  const regularPosts = posts.filter(p => !p.isChallengeReply && p.type !== 'challenge');
   const challengePosts = posts.filter(p => p.type === 'challenge');
 
   return (

@@ -110,6 +110,15 @@ export default function FeedPage() {
       }
     });
   };
+  
+  const handleShare = (postId: string) => {
+    const postUrl = `${window.location.origin}/feed#${postId}`;
+    navigator.clipboard.writeText(postUrl);
+    toast({
+        title: 'Link Copied',
+        description: 'The link to the post has been copied to your clipboard.',
+    });
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -176,7 +185,7 @@ export default function FeedPage() {
           posts.map((post) => {
             const hasLiked = user ? post.likes.includes(user.uid) : false;
             return (
-              <Card key={post.id} className="w-full">
+              <Card key={post.id} id={post.id} className="w-full">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -218,10 +227,10 @@ export default function FeedPage() {
                     />
                     Like ({post.likes.length})
                   </Button>
-                  <Button variant="ghost" className="flex-1" disabled>
+                  <Button variant="ghost" className="flex-1">
                     <MessageCircle className="mr-2 h-4 w-4" /> Comment
                   </Button>
-                  <Button variant="ghost" className="flex-1" disabled>
+                  <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
                     <Share2 className="mr-2 h-4 w-4" /> Share
                   </Button>
                 </CardFooter>

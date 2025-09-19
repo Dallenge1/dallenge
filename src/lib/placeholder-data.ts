@@ -9,6 +9,7 @@ import {
   Users,
   User,
   Trophy,
+  UploadCloud,
 } from 'lucide-react';
 
 export const NAV_LINKS = [
@@ -22,6 +23,7 @@ export const NAV_LINKS = [
   { href: '/feed', label: 'Social Feed', icon: Users, description: "Connect with the community." },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, description: "See who's at the top." },
   { href: '/profile', label: 'Profile', icon: User, description: 'Manage your account settings.' },
+  { href: '/upload-test', label: 'Upload Test', icon: UploadCloud, description: 'Debug file uploads.' },
 ];
 
 export const videoData = [

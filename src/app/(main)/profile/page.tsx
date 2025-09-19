@@ -32,11 +32,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Edit } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -57,9 +63,15 @@ export default function ProfilePage() {
     defaultValues: {
       displayName: user?.displayName ?? '',
       phone: '',
-      bio: '',
+      bio: 'Lover of technology, wellness, and continuous learning. Excited to be on the DAWION platform!',
+      dob: user?.metadata.creationTime ? new Date(user.metadata.creationTime) : undefined,
     },
   });
+  
+  const { watch } = form;
+  const bioValue = watch('bio');
+  const dobValue = watch('dob');
+
 
   const onProfileSubmit = (data: ProfileFormValues) => {
     console.log(data);
@@ -70,185 +82,193 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings and personal information.
-        </p>
+    <div className="space-y-8">
+      <header className="flex items-center gap-4">
+        <Avatar className="h-24 w-24 border-4 border-background ring-2 ring-primary">
+          {userAvatar && <AvatarImage src={userAvatar.imageUrl} />}
+          <AvatarFallback className="text-3xl">
+            {user?.displayName?.charAt(0).toUpperCase() ??
+              user?.email?.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="grid gap-1">
+          <h1 className="text-3xl font-bold tracking-tight">
+            {user?.displayName}
+          </h1>
+          <p className="text-muted-foreground">{user?.email}</p>
+          {bioValue && <p className="text-sm max-w-prose mt-2">{bioValue}</p>}
+           {dobValue && <p className="text-sm text-muted-foreground">Born {format(dobValue, 'MMMM d, yyyy')}</p>}
+        </div>
       </header>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>
-            Update your display name and other personal details.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onProfileSubmit)}
-              className="space-y-6"
-            >
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  {userAvatar && <AvatarImage src={userAvatar.imageUrl} />}
-                  <AvatarFallback>
-                    {user?.displayName?.charAt(0).toUpperCase() ??
-                      user?.email?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid gap-1">
-                  <h2 className="text-xl font-semibold">
-                    {user?.displayName}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="displayName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Your display name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          placeholder="Your phone number"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="dob"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Date of Birth</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, 'PPP')
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date('1900-01-01')
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="bio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bio</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Tell us a little bit about yourself"
-                        className="resize-none"
-                        {...field}
+      
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="item-1">
+          <AccordionTrigger>
+             <CardHeader className="p-0">
+                <CardTitle>Edit Profile</CardTitle>
+                <CardDescription>
+                  Update your display name and other personal details.
+                </CardDescription>
+              </CardHeader>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Card className="border-none shadow-none">
+              <CardContent className="pt-6">
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onProfileSubmit)}
+                    className="space-y-6"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="displayName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Display Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your display name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="tel"
+                                placeholder="Your phone number"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-              <Button type="submit">Save Changes</Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                    <FormField
+                      control={form.control}
+                      name="dob"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Date of Birth</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={'outline'}
+                                  className={cn(
+                                    'w-full pl-3 text-left font-normal',
+                                    !field.value && 'text-muted-foreground'
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, 'PPP')
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date('1900-01-01')
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-      <Separator />
+                    <FormField
+                      control={form.control}
+                      name="bio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bio</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Tell us a little bit about yourself"
+                              className="resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-          <CardDescription>
-            For your security, we recommend using a strong password that you
-            don&apos;t use elsewhere.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="current-password">Current Password</Label>
-            <Input id="current-password" type="password" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
-            <Input id="new-password" type="password" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm New Password</Label>
-            <Input id="confirm-password" type="password" />
-          </div>
-        </CardContent>
-        <CardContent>
-          <Button>Change Password</Button>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-destructive">Delete Account</CardTitle>
-          <CardDescription>
-            Permanently delete your account and all associated data. This action
-            cannot be undone.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive">Delete My Account</Button>
-        </CardContent>
-      </Card>
+                    <Button type="submit">Save Changes</Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="item-2">
+           <AccordionTrigger>
+             <CardHeader className="p-0">
+                <CardTitle>Change Password</CardTitle>
+                <CardDescription>
+                  For your security, use a strong password.
+                </CardDescription>
+              </CardHeader>
+          </AccordionTrigger>
+          <AccordionContent>
+             <Card className="border-none shadow-none">
+              <CardContent className="space-y-4 pt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input id="current-password" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input id="new-password" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input id="confirm-password" type="password" />
+                </div>
+                 <Button>Change Password</Button>
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+         <AccordionItem value="item-3" className="border-b-0">
+           <AccordionTrigger>
+             <CardHeader className="p-0">
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardDescription>
+                  Permanently delete your account and all associated data.
+                </CardDescription>
+              </CardHeader>
+          </AccordionTrigger>
+          <AccordionContent>
+             <Card className="border-none shadow-none">
+              <CardContent className="pt-6">
+                <p className="mb-4 text-sm text-muted-foreground">
+                    This action cannot be undone. This will permanently delete your account, and remove your data from our servers.
+                </p>
+                <Button variant="destructive">Delete My Account</Button>
+              </CardContent>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }

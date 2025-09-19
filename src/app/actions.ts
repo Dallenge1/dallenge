@@ -7,7 +7,7 @@ import {
   type PersonalizedFitnessRecommendationsOutput,
 } from '@/ai/flows/personalized-fitness-recommendations';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 export async function getRecommendationsAction(
@@ -41,8 +41,11 @@ export async function createPost(
       likes: [],
       comments: [],
       type: postType,
-      challengeAcceptedBy: postType === 'challenge' ? [] : undefined,
-      challengeReplies: postType === 'challenge' ? [] : undefined,
+      ...(postType === 'challenge' && { 
+        challengeAcceptedBy: [], 
+        challengeReplies: [],
+        coins: []
+      }),
     });
     revalidatePath('/feed');
   } catch (error) {
@@ -73,6 +76,34 @@ export async function likePost(postId: string, userId: string) {
   } catch (error) {
     console.error('Error liking post:', error);
     throw new Error('Failed to like post.');
+  }
+}
+
+export async function addCoin(postId: string, userId: string) {
+  try {
+    const postRef = doc(db, 'posts', postId);
+    const postSnap = await getDoc(postRef);
+
+    if (postSnap.exists()) {
+      const postData = postSnap.data();
+      if(postData.type !== 'challenge') throw new Error("Can only add coins to challenges.");
+      
+      const coins = postData.coins || [];
+      if (coins.includes(userId)) {
+        // User already gave a coin, so we remove it (toggle behavior)
+        await updateDoc(postRef, {
+          coins: arrayRemove(userId),
+        });
+      } else {
+        await updateDoc(postRef, {
+          coins: arrayUnion(userId),
+        });
+      }
+      revalidatePath('/feed');
+    }
+  } catch (error) {
+    console.error('Error adding coin:', error);
+    throw new Error('Failed to add coin.');
   }
 }
 
@@ -143,4 +174,15 @@ export async function replyToChallenge(
     console.error('Error replying to challenge:', error);
     throw new Error('Failed to reply to challenge.');
   }
+}
+
+export async function deletePost(postId: string) {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        await deleteDoc(postRef);
+        revalidatePath('/feed');
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        throw new Error('Failed to delete post.');
+    }
 }

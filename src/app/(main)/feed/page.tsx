@@ -6,9 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply } from 'lucide-react';
+import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { createPost, likePost, addComment, acceptChallenge, replyToChallenge } from '@/app/actions';
+import { createPost, likePost, addComment, acceptChallenge, replyToChallenge, deletePost, addCoin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import {
   collection,
@@ -16,10 +16,6 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
-  doc,
-  getDoc,
-  getDocs,
-  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +28,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import ChallengeReply from './challenge-reply';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 type CommentData = {
   authorName: string;
@@ -55,6 +54,7 @@ type Post = {
   challengeReplies?: string[];
   isChallengeReply?: boolean;
   originalChallengeId?: string;
+  coins?: string[];
 };
 
 export default function FeedPage() {
@@ -73,6 +73,9 @@ export default function FeedPage() {
   const [isChallenge, setIsChallenge] = useState(false);
   const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null}}>({});
   const replyImageInputRef = useRef<HTMLInputElement>(null);
+
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -96,6 +99,7 @@ export default function FeedPage() {
           challengeReplies: data.challengeReplies || [],
           isChallengeReply: data.isChallengeReply || false,
           originalChallengeId: data.originalChallengeId,
+          coins: data.coins || [],
         });
       });
       setPosts(postsData);
@@ -208,6 +212,14 @@ export default function FeedPage() {
     }
     startTransition(() => likePost(postId, user.uid).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to update like status.' })));
   };
+
+  const handleAddCoin = (postId: string) => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to give coins.' });
+      return;
+    }
+    startTransition(() => addCoin(postId, user.uid).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to give coin.' })));
+  };
   
   const handleShare = async (postId: string) => {
     const postUrl = `${window.location.origin}/feed#${postId}`;
@@ -259,7 +271,7 @@ export default function FeedPage() {
           content: replyContent,
           imageUrl,
         });
-        setReplyStates(prev => ({...prev, [postId]: {content: '', imageFile: null, imagePreview: null}}));
+        setReplyStates(prev => ({...prev, [post.id]: {content: '', imageFile: null, imagePreview: null}}));
         toast({ title: 'Success!', description: 'Your challenge reply has been posted.'});
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to post reply.'});
@@ -267,14 +279,37 @@ export default function FeedPage() {
     });
   };
 
-  const renderProfileLink = (post: Post, children: React.ReactNode, className?: string) => (
-    <Link href={`/users/${post.authorId}`} className={className}>{children}</Link>
-  );
+  const handleDeletePost = (postId: string) => {
+    setPostToDelete(postId);
+    setDeleteAlertOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!postToDelete) return;
+    startTransition(async () => {
+      try {
+        await deletePost(postToDelete);
+        toast({ title: 'Post Deleted', description: 'Your post has been successfully deleted.' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete post.' });
+      } finally {
+        setDeleteAlertOpen(false);
+        setPostToDelete(null);
+      }
+    });
+  };
+
+  const renderProfileLink = (post: Post, children: React.ReactNode, className?: string) => {
+    if (!post.authorId) return <div className={className}>{children}</div>;
+    return <Link href={`/users/${post.authorId}`} className={className}>{children}</Link>;
+  };
 
   const renderPostCard = (post: Post) => {
     const hasLiked = user ? post.likes.includes(user.uid) : false;
+    const hasGivenCoin = user && post.type === 'challenge' ? post.coins?.includes(user.uid) : false;
     const hasAcceptedChallenge = user && post.type === 'challenge' ? post.challengeAcceptedBy?.includes(user.uid) : false;
     const replyState = replyStates[post.id] || {content: '', imageFile: null, imagePreview: null};
+    const isAuthor = user?.uid === post.authorId;
 
     return (
       <Card key={post.id} id={post.id} className="w-full">
@@ -294,7 +329,23 @@ export default function FeedPage() {
                 <p className="text-xs text-muted-foreground">{post.timestamp ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true }) : 'just now'}</p>
               </div>
             </div>
-            {post.type === 'challenge' && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
+            <div className='flex items-center gap-2'>
+              {post.type === 'challenge' && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
+              {isAuthor && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive">
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -302,7 +353,17 @@ export default function FeedPage() {
           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
         </CardContent>
         <CardFooter className="flex justify-between border-t p-2">
-          <Button variant="ghost" className="flex-1" onClick={() => handleLike(post.id)} disabled={isPending || !user}><Heart className={cn('mr-2 h-4 w-4', hasLiked && 'fill-red-500 text-red-500')} />Like ({post.likes.length})</Button>
+           {post.type === 'challenge' ? (
+            <Button variant="ghost" className="flex-1" onClick={() => handleAddCoin(post.id)} disabled={isPending || !user}>
+              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-amber-500')} />
+              Coin ({post.coins?.length ?? 0})
+            </Button>
+           ) : (
+            <Button variant="ghost" className="flex-1" onClick={() => handleLike(post.id)} disabled={isPending || !user}>
+              <Heart className={cn('mr-2 h-4 w-4', hasLiked && 'fill-red-500 text-red-500')} />
+              Like ({post.likes.length})
+            </Button>
+           )}
           <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}><MessageCircle className="mr-2 h-4 w-4" />Comment ({post.comments.length})</Button>
           {post.type === 'challenge' && user && user.uid !== post.authorId ? (
             <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id)} disabled={isPending || hasAcceptedChallenge}>
@@ -366,6 +427,23 @@ export default function FeedPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your post.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={isPending}>
+              {isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Social Feed</h1>
         <p className="text-muted-foreground">Connect with the community, share your thoughts, and take on challenges.</p>

@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -14,7 +14,8 @@ import { Timestamp } from "firebase/firestore";
 import { User } from 'firebase/auth';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { Coins, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type Post = {
   id: string;
@@ -24,6 +25,8 @@ type Post = {
   content: string;
   timestamp: Timestamp;
   imageUrl?: string;
+  coins?: string[];
+  comments?: any[];
 };
 
 type ChallengeReplyProps = {
@@ -32,9 +35,12 @@ type ChallengeReplyProps = {
   isLoading?: boolean;
   currentUser: User | null;
   onDelete: (postId: string) => void;
+  onAddCoin: (postId: string) => void;
+  onShare: (postId: string) => void;
+  isPending: boolean;
 };
 
-export default function ChallengeReply({ postId, post: initialPost, isLoading: initialLoading = false, currentUser, onDelete }: ChallengeReplyProps) {
+export default function ChallengeReply({ postId, post: initialPost, isLoading: initialLoading = false, currentUser, onDelete, onAddCoin, onShare, isPending }: ChallengeReplyProps) {
   const [post, setPost] = useState<Post | null>(initialPost || null);
   const [isLoading, setIsLoading] = useState(initialLoading || !initialPost);
 
@@ -56,13 +62,21 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-full" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-4 w-32" />
-        </div>
-      </div>
+        <Card className="bg-background/50">
+            <CardHeader className="p-3">
+                <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-20 w-full" />
+            </CardContent>
+        </Card>
     );
   }
 
@@ -71,6 +85,7 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
   }
 
   const isAuthor = currentUser?.uid === post.authorId;
+  const hasGivenCoin = currentUser ? post.coins?.includes(currentUser.uid) : false;
 
   return (
     <Card className="bg-background/50">
@@ -116,6 +131,14 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
           </div>
         )}
       </CardContent>
+       <CardFooter className="flex justify-between border-t p-2">
+            <Button variant="ghost" className="flex-1" onClick={() => onAddCoin(post.id)} disabled={isPending || !currentUser}>
+              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-amber-500')} />
+              Coin ({post.coins?.length ?? 0})
+            </Button>
+            <Button variant="ghost" className="flex-1" disabled><MessageCircle className="mr-2 h-4 w-4" />Comment ({post.comments?.length ?? 0})</Button>
+            <Button variant="ghost" className="flex-1" onClick={() => onShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>
+      </CardFooter>
     </Card>
   );
 }

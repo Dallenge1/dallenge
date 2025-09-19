@@ -412,8 +412,17 @@ export default function FeedPage() {
             <div className='space-y-4'>
               {post.challengeReplies.map(replyId => {
                 const replyPost = posts.find(p => p.id === replyId);
-                if (!replyPost) return <ChallengeReply key={replyId} postId={replyId} isLoading={true} currentUser={user} onDelete={handleDeletePost} onAddCoin={handleAddCoin} onShare={handleShare} isPending={isPending} />;
-                return <ChallengeReply key={replyId} post={replyPost} currentUser={user} onDelete={handleDeletePost} onAddCoin={handleAddCoin} onShare={handleShare} isPending={isPending} />;
+                return <ChallengeReply 
+                  key={replyId} 
+                  postId={replyId} 
+                  post={replyPost} 
+                  isLoading={!replyPost}
+                  currentUser={user} 
+                  onDelete={handleDeletePost} 
+                  onAddCoin={handleAddCoin} 
+                  onShare={handleShare} 
+                  isPending={isPending} 
+                />;
               })}
             </div>
           </CardContent>

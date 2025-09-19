@@ -271,7 +271,7 @@ export default function FeedPage() {
           content: replyContent,
           imageUrl,
         });
-        setReplyStates(prev => ({...prev, [post.id]: {content: '', imageFile: null, imagePreview: null}}));
+        setReplyStates(prev => ({...prev, [postId]: {content: '', imageFile: null, imagePreview: null}}));
         toast({ title: 'Success!', description: 'Your challenge reply has been posted.'});
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to post reply.'});

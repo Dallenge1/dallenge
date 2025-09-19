@@ -2,13 +2,14 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDePhIQo26UglpRWYeYgLBU05TZzyMC3Ig",
   authDomain: "studio-112659148-adafd.firebaseapp.com",
   projectId: "studio-112659148-adafd",
-  storageBucket: "studio-112659148-adafd.firebasestorage.app",
+  storageBucket: "studio-112659148-adafd.appspot.com",
   messagingSenderId: "70521988102",
   appId: "1:70521988102:web:c2cd5633465ec71c1f0f87"
 };
@@ -18,3 +19,4 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
+export const storage = getStorage(app);

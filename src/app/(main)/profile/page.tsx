@@ -13,8 +13,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -32,7 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, Edit } from 'lucide-react';
+import { CalendarIcon, Edit, Upload } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -43,6 +41,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import React from 'react';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -54,15 +53,15 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUserPhoto, loading } = useAuth();
   const { toast } = useToast();
-  const userAvatar = PlaceHolderImages.find((i) => i.id === 'user-avatar-1');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       displayName: user?.displayName ?? '',
-      phone: '',
+      phone: user?.phoneNumber ?? '',
       bio: 'Lover of technology, wellness, and continuous learning. Excited to be on the DAWION platform!',
       dob: user?.metadata.creationTime ? new Date(user.metadata.creationTime) : undefined,
     },
@@ -80,17 +79,58 @@ export default function ProfilePage() {
       description: 'Your personal information has been updated.',
     });
   };
+  
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && user) {
+      try {
+        await updateUserPhoto(file);
+        toast({
+          title: 'Success',
+          description: 'Profile picture updated successfully!',
+        });
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to upload image.',
+        });
+      }
+    }
+  };
+
 
   return (
     <div className="space-y-8">
       <header className="flex items-center gap-4">
-        <Avatar className="h-24 w-24 border-4 border-background ring-2 ring-primary">
-          {userAvatar && <AvatarImage src={userAvatar.imageUrl} />}
-          <AvatarFallback className="text-3xl">
-            {user?.displayName?.charAt(0).toUpperCase() ??
-              user?.email?.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative group">
+          <Avatar className="h-24 w-24 border-4 border-background ring-2 ring-primary">
+            <AvatarImage src={user?.photoURL ?? undefined} />
+            <AvatarFallback className="text-3xl">
+              {user?.displayName?.charAt(0).toUpperCase() ??
+                user?.email?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <button
+            onClick={handleAvatarClick}
+            className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+            disabled={loading}
+          >
+            <Upload className="h-8 w-8 text-white" />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="image/png, image/jpeg"
+            disabled={loading}
+          />
+        </div>
         <div className="grid gap-1">
           <h1 className="text-3xl font-bold tracking-tight">
             {user?.displayName}

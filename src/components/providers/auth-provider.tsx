@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -11,7 +12,8 @@ import {
   updateProfile,
   signInWithPopup,
 } from 'firebase/auth';
-import { auth as firebaseAuth, googleProvider } from '@/lib/firebase';
+import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Skeleton } from '../ui/skeleton';
 
 interface AuthContextType {
@@ -21,6 +23,7 @@ interface AuthContextType {
   signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
+  updateUserPhoto: (file: File) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,6 +84,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const updateUserPhoto = async (file: File) => {
+    if (!user) throw new Error("You must be logged in to update your profile picture.");
+    setLoading(true);
+    try {
+      const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const photoURL = await getDownloadURL(snapshot.ref);
+      await updateProfile(user, { photoURL });
+      // Create a new user object to trigger re-render
+      setUser({ ...user, photoURL }); 
+    } catch (error) {
+      console.error("Error updating profile photo:", error);
+      throw new Error("Failed to update profile picture.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -88,9 +109,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     signInWithGoogle,
     logOut,
+    updateUserPhoto
   };
 
-  if (loading) {
+  if (loading && !user) {
     return (
         <div className="flex items-center justify-center h-screen">
             <div className="flex flex-col items-center space-y-4">

@@ -8,7 +8,6 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle, Heart, Share2, CornerRightDown } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { createPost, likePost, addComment } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -51,8 +50,6 @@ export default function FeedPage() {
   const [commentContent, setCommentContent] = useState('');
   const [activeCommentBox, setActiveCommentBox] = useState<string | null>(null);
 
-  const userAvatar = PlaceHolderImages.find((i) => i.id === 'user-avatar-1');
-
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -71,19 +68,27 @@ export default function FeedPage() {
       });
       setPosts(postsData);
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching posts:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to load feed. Check console for details.',
+        });
+        setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
   const handlePost = () => {
-    if (!content.trim() || !user || !userAvatar) return;
+    if (!content.trim() || !user) return;
 
     startTransition(async () => {
       try {
         await createPost(
           user.displayName || 'Anonymous',
-          userAvatar.imageUrl,
+          user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
           content
         );
         setContent('');
@@ -133,13 +138,13 @@ export default function FeedPage() {
   };
 
   const handleCommentSubmit = (postId: string) => {
-    if (!commentContent.trim() || !user || !userAvatar) return;
+    if (!commentContent.trim() || !user) return;
 
     startTransition(async () => {
         try {
             await addComment(postId, {
                 authorName: user.displayName || 'Anonymous',
-                authorAvatarUrl: userAvatar.imageUrl,
+                authorAvatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
                 content: commentContent,
             });
             setCommentContent('');
@@ -173,23 +178,21 @@ export default function FeedPage() {
 
       <Card>
         <CardContent className="flex gap-4 p-4">
-          {userAvatar && (
-            <Avatar>
-              <AvatarImage src={userAvatar.imageUrl} alt="Your avatar" />
-              <AvatarFallback>
-                {user?.displayName?.charAt(0) ?? 'U'}
-              </AvatarFallback>
-            </Avatar>
-          )}
+          <Avatar>
+            <AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" />
+            <AvatarFallback>
+              {user?.displayName?.charAt(0) ?? 'U'}
+            </AvatarFallback>
+          </Avatar>
           <div className="w-full space-y-2">
             <Textarea
               placeholder="What's on your mind?"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              disabled={isPending}
+              disabled={isPending || !user}
             />
             <div className="flex justify-end">
-              <Button onClick={handlePost} disabled={isPending || !content.trim()}>
+              <Button onClick={handlePost} disabled={isPending || !content.trim() || !user}>
                 {isPending ? 'Posting...' : 'Post'}
               </Button>
             </div>
@@ -259,7 +262,7 @@ export default function FeedPage() {
                     variant="ghost"
                     className="flex-1"
                     onClick={() => handleLike(post.id)}
-                    disabled={isPending}
+                    disabled={isPending || !user}
                   >
                     <Heart
                       className={cn(
@@ -269,7 +272,7 @@ export default function FeedPage() {
                     />
                     Like ({post.likes.length})
                   </Button>
-                  <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)}>
+                  <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}>
                     <MessageCircle className="mr-2 h-4 w-4" /> Comment ({post.comments.length})
                   </Button>
                   <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
@@ -280,14 +283,12 @@ export default function FeedPage() {
                 {activeCommentBox === post.id && (
                   <CardContent className="p-4 border-t">
                       <div className="flex gap-4">
-                        {userAvatar && (
-                          <Avatar>
-                            <AvatarImage src={userAvatar.imageUrl} alt="Your avatar" />
-                            <AvatarFallback>
-                              {user?.displayName?.charAt(0) ?? 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
+                        <Avatar>
+                          <AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" />
+                          <AvatarFallback>
+                            {user?.displayName?.charAt(0) ?? 'U'}
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="w-full space-y-2">
                           <Textarea
                             placeholder="Write a comment..."
@@ -305,7 +306,7 @@ export default function FeedPage() {
 
                     {post.comments.length > 0 && (
                         <div className="mt-4 space-y-4">
-                            {post.comments.map((comment, index) => (
+                            {post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (
                                 <Comment key={index} comment={comment} />
                             ))}
                         </div>

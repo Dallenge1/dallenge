@@ -12,13 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useAuth } from '../providers/auth-provider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function UserNav() {
-  const userAvatar = PlaceHolderImages.find((i) => i.id === 'user-avatar-1');
   const { user, logOut } = useAuth();
   const router = useRouter();
 
@@ -32,8 +30,8 @@ export default function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {userAvatar ? <AvatarImage src={userAvatar.imageUrl} alt="User" data-ai-hint={userAvatar.imageHint} /> : null}
-            <AvatarFallback>{user?.email?.charAt(0).toUpperCase() ?? 'U'}</AvatarFallback>
+            <AvatarImage src={user?.photoURL ?? undefined} alt="User avatar" />
+            <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U'}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

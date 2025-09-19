@@ -12,8 +12,7 @@ import {
   updateProfile,
   signInWithPopup,
 } from 'firebase/auth';
-import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth as firebaseAuth, googleProvider } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
 
 interface AuthContextType {
@@ -87,36 +86,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUserPhoto = async (file: File) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
     
-    const filePath = `profile-photos/${user.uid}/${Date.now()}-${file.name}`;
-    const storageRef = ref(storage, filePath);
+    const imgbbApiKey = 'a12aae9588a45f9b3b1e1793a67c5a5f';
+    const formData = new FormData();
+    formData.append('image', file);
 
     try {
-      // Step 1: Upload the file with metadata
-      try {
-        await uploadBytes(storageRef, file, { contentType: file.type });
-      } catch (error) {
-        console.error("Firebase Storage upload failed:", error);
-        throw new Error("Failed to upload image to storage. Check storage rules and configuration.");
+      // Step 1: Upload the file to ImgBB
+      console.log('Uploading to ImgBB...');
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ImgBB upload failed: ${response.statusText} - ${errorText}`);
       }
 
-      // Step 2: Get the download URL
-      let photoURL;
-      try {
-        photoURL = await getDownloadURL(storageRef);
-      } catch (error) {
-        console.error("Failed to get download URL:", error);
-        throw new Error("Image uploaded, but failed to get the public URL.");
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(`ImgBB API error: ${result.error.message}`);
       }
       
-      // Step 3: Update the user's profile
-      try {
-        await updateProfile(user, { photoURL });
-      } catch (error) {
-        console.error("Failed to update user profile:", error);
-        throw new Error("Failed to update profile with new image URL.");
-      }
+      const photoURL = result.data.display_url;
+      console.log('ImgBB upload successful. URL:', photoURL);
+
+      // Step 2: Update the user's profile in Firebase Auth
+      console.log('Updating Firebase profile...');
+      await updateProfile(user, { photoURL });
+      console.log('Firebase profile updated.');
       
-      // Step 4: Update local user state to trigger re-render
+      // Step 3: Update local user state to trigger re-render
       setUser({ ...user, photoURL }); 
 
     } catch (error) {

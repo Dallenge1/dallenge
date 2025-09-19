@@ -87,16 +87,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUserPhoto = async (file: File) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
     setLoading(true);
+    
+    const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`);
+
     try {
-      const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const photoURL = await getDownloadURL(snapshot.ref);
-      await updateProfile(user, { photoURL });
-      // Create a new user object to trigger re-render
+      // Step 1: Upload the file
+      try {
+        await uploadBytes(storageRef, file);
+      } catch (error) {
+        console.error("Firebase Storage upload failed:", error);
+        throw new Error("Failed to upload image to storage. Check storage rules and configuration.");
+      }
+
+      // Step 2: Get the download URL
+      let photoURL;
+      try {
+        photoURL = await getDownloadURL(storageRef);
+      } catch (error) {
+        console.error("Failed to get download URL:", error);
+        throw new Error("Image uploaded, but failed to get the public URL.");
+      }
+      
+      // Step 3: Update the user's profile
+      try {
+        await updateProfile(user, { photoURL });
+      } catch (error) {
+        console.error("Failed to update user profile:", error);
+        throw new Error("Failed to update profile with new image URL.");
+      }
+      
+      // Step 4: Update local user state to trigger re-render
       setUser({ ...user, photoURL }); 
+
     } catch (error) {
-      console.error("Error updating profile photo:", error);
-      throw new Error("Failed to update profile picture.");
+      console.error("Overall error in updateUserPhoto:", error);
+      // Re-throw the specific error from the inner try-catch blocks
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("An unexpected error occurred during photo update.");
     } finally {
       setLoading(false);
     }

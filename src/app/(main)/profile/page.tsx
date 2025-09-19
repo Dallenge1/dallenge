@@ -30,7 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, Edit, Upload } from 'lucide-react';
+import { CalendarIcon, Upload } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -53,9 +53,10 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfilePage() {
-  const { user, updateUserPhoto, loading } = useAuth();
+  const { user, updateUserPhoto, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -87,6 +88,7 @@ export default function ProfilePage() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && user) {
+      setIsUploading(true);
       try {
         await updateUserPhoto(file);
         toast({
@@ -99,10 +101,13 @@ export default function ProfilePage() {
           title: 'Error',
           description: error instanceof Error ? error.message : 'Failed to upload image.',
         });
+      } finally {
+        setIsUploading(false);
       }
     }
   };
 
+  const isLoading = authLoading || isUploading;
 
   return (
     <div className="space-y-8">
@@ -118,7 +123,7 @@ export default function ProfilePage() {
           <button
             onClick={handleAvatarClick}
             className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-            disabled={loading}
+            disabled={isLoading}
           >
             <Upload className="h-8 w-8 text-white" />
           </button>
@@ -128,7 +133,7 @@ export default function ProfilePage() {
             onChange={handleFileChange}
             className="hidden"
             accept="image/png, image/jpeg"
-            disabled={loading}
+            disabled={isLoading}
           />
         </div>
         <div className="grid gap-1">

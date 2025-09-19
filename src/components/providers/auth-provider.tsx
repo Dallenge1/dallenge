@@ -23,7 +23,7 @@ interface AuthContextType {
   signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
-  updateUserPhoto: (blob: Blob) => Promise<void>;
+  updateUserPhoto: (file: File) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,17 +84,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateUserPhoto = async (blob: Blob) => {
+  const updateUserPhoto = async (file: File) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
     
-    // Create a unique filename for the new avatar
-    const fileName = `${Date.now()}.jpg`;
-    const storageRef = ref(storage, `profile-photos/${user.uid}/${fileName}`);
+    const filePath = `profile-photos/${user.uid}/${Date.now()}-${file.name}`;
+    const storageRef = ref(storage, filePath);
 
     try {
       // Step 1: Upload the file with metadata
       try {
-        await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+        await uploadBytes(storageRef, file, { contentType: file.type });
       } catch (error) {
         console.error("Firebase Storage upload failed:", error);
         throw new Error("Failed to upload image to storage. Check storage rules and configuration.");
@@ -122,7 +121,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     } catch (error) {
       console.error("Overall error in updateUserPhoto:", error);
-      // Re-throw the specific error from the inner try-catch blocks
       if (error instanceof Error) {
         throw error;
       }
@@ -168,3 +166,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

@@ -9,7 +9,6 @@ import {
   Users,
   User,
   Trophy,
-  UploadCloud,
 } from 'lucide-react';
 
 export const NAV_LINKS = [
@@ -23,7 +22,6 @@ export const NAV_LINKS = [
   { href: '/feed', label: 'Social Feed', icon: Users, description: "Connect with the community." },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, description: "See who's at the top." },
   { href: '/profile', label: 'Profile', icon: User, description: 'Manage your account settings.' },
-  { href: '/upload-test', label: 'Upload Test', icon: UploadCloud, description: 'Debug file uploads.' },
 ];
 
 export const videoData = [
@@ -50,7 +48,7 @@ export const gameData = [
 export const socialFeedData = [
     { id: 1, authorName: 'Jane Doe', authorAvatarId: 'user-avatar-2', timestamp: '2 hours ago', content: 'Just finished the intro to Quantum Physics video! Mind-blowing stuff. Can anyone recommend further reading?' },
     { id: 2, authorName: 'John Smith', authorAvatarId: 'user-avatar-3', timestamp: '5 hours ago', content: 'Hit a new personal best on my 5k run today! The AI trainer plan is really paying off. #fitness #goals' },
-    { id: 3, authorName: 'Emily White', authorAvatarId: 'user-avatar-4', timestamp: '1 day ago', content: 'I love the logic puzzles in the IQ games section. They are challenging but so rewarding when you solve one.' },
+    { id: 3, title: 'Emily White', authorAvatarId: 'user-avatar-4', timestamp: '1 day ago', content: 'I love the logic puzzles in the IQ games section. They are challenging but so rewarding when you solve one.' },
 ];
 
 export const leaderboardData = [
@@ -65,3 +63,5 @@ export const leaderboardData = [
   { id: 9, rank: 9, name: 'Emily White', points: 12100, avatarId: 'user-avatar-4' },
   { id: 10, rank: 10, name: 'Chris Lee', points: 11900, avatarId: 'user-avatar-11' },
 ];
+
+    

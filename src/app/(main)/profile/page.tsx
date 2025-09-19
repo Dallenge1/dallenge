@@ -30,7 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, Upload } from 'lucide-react';
+import { CalendarIcon, Upload, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -42,9 +42,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import React, { useState } from 'react';
-import ImageCropDialog from './image-crop-dialog';
-import { getCroppedImg } from './crop-image';
-import { Area } from 'react-easy-crop';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -59,11 +56,6 @@ export default function ProfilePage() {
   const { user, updateUserPhoto, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<ProfileFormValues>({
@@ -96,37 +88,26 @@ export default function ProfilePage() {
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      let imageDataUrl = await readFile(file);
-      setImageSrc(imageDataUrl);
-    }
-  };
+      if (!file) return;
 
-  const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  };
-
-  const handleSaveCrop = async () => {
-    if (!imageSrc || !croppedAreaPixels) return;
-
-    setIsUploading(true);
-    try {
-      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-      await updateUserPhoto(croppedImageBlob);
-      toast({
-        title: 'Success',
-        description: 'Profile picture updated successfully!',
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
-      });
-    } finally {
-      setIsUploading(false);
-      setImageSrc(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      setIsUploading(true);
+      try {
+        await updateUserPhoto(file);
+        toast({
+          title: 'Success',
+          description: 'Profile picture updated successfully!',
+        });
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+      } finally {
+        setIsUploading(false);
+         if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     }
   };
@@ -135,19 +116,6 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-       {imageSrc && (
-        <ImageCropDialog
-          imageSrc={imageSrc}
-          crop={crop}
-          zoom={zoom}
-          setCrop={setCrop}
-          setZoom={setZoom}
-          onCroppedAreaChange={onCropComplete}
-          onClose={() => setImageSrc(null)}
-          onSave={handleSaveCrop}
-          isLoading={isUploading}
-        />
-      )}
       <header className="flex items-center gap-4">
         <div className="relative group">
           <Avatar className="h-24 w-24 border-4 border-background ring-2 ring-primary">
@@ -162,7 +130,11 @@ export default function ProfilePage() {
             className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
             disabled={isLoading}
           >
-            <Upload className="h-8 w-8 text-white" />
+             {isUploading ? (
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
+            ) : (
+              <Upload className="h-8 w-8 text-white" />
+            )}
           </button>
           <input
             type="file"
@@ -358,10 +330,4 @@ export default function ProfilePage() {
   );
 }
 
-function readFile(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => resolve(reader.result as string), false);
-    reader.readAsDataURL(file);
-  });
-}
+    

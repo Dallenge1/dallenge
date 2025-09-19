@@ -128,13 +128,21 @@ export default function FeedPage() {
     });
   };
   
-  const handleShare = (postId: string) => {
-    const postUrl = `${window.location.origin}/feed#${postId}`;
-    navigator.clipboard.writeText(postUrl);
-    toast({
-        title: 'Link Copied',
-        description: 'The link to the post has been copied to your clipboard.',
-    });
+  const handleShare = async (postId: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      const postUrl = `${window.location.origin}/feed#${postId}`;
+      await navigator.clipboard.writeText(postUrl);
+      toast({
+          title: 'Link Copied',
+          description: 'The link to the post has been copied to your clipboard.',
+      });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not copy link. Your browser may not support this feature or you are not on a secure connection (HTTPS).',
+        });
+    }
   };
 
   const handleCommentSubmit = (postId: string) => {
@@ -332,3 +340,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    

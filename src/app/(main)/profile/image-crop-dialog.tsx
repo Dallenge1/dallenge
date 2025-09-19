@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -43,6 +44,9 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
       <DialogContent className="sm:max-w-[425px] md:sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Crop Your Profile Picture</DialogTitle>
+           <DialogDescription>
+            Adjust the image to get the perfect crop for your new avatar.
+          </DialogDescription>
         </DialogHeader>
         <div className="relative h-80 w-full bg-muted">
           <Cropper
@@ -85,3 +89,5 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
 };
 
 export default ImageCropDialog;
+
+    

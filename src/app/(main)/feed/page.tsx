@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle, Heart, Share2, CornerRightDown } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { createPost, likePost } from '@/app/actions';
+import { createPost, likePost, addComment } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import {
   collection,
@@ -22,6 +22,14 @@ import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import Comment from './comment';
+
+type CommentData = {
+  authorName: string;
+  authorAvatarUrl: string;
+  content: string;
+  timestamp: Timestamp;
+};
 
 type Post = {
   id: string;
@@ -30,6 +38,7 @@ type Post = {
   content: string;
   timestamp: Timestamp;
   likes: string[];
+  comments: CommentData[];
 };
 
 export default function FeedPage() {
@@ -39,6 +48,8 @@ export default function FeedPage() {
   const [content, setContent] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [commentContent, setCommentContent] = useState('');
+  const [activeCommentBox, setActiveCommentBox] = useState<string | null>(null);
 
   const userAvatar = PlaceHolderImages.find((i) => i.id === 'user-avatar-1');
 
@@ -55,6 +66,7 @@ export default function FeedPage() {
           content: data.content,
           timestamp: data.timestamp,
           likes: data.likes || [],
+          comments: data.comments || [],
         });
       });
       setPosts(postsData);
@@ -119,6 +131,36 @@ export default function FeedPage() {
         description: 'The link to the post has been copied to your clipboard.',
     });
   };
+
+  const handleCommentSubmit = (postId: string) => {
+    if (!commentContent.trim() || !user || !userAvatar) return;
+
+    startTransition(async () => {
+        try {
+            await addComment(postId, {
+                authorName: user.displayName || 'Anonymous',
+                authorAvatarUrl: userAvatar.imageUrl,
+                content: commentContent,
+            });
+            setCommentContent('');
+            setActiveCommentBox(null);
+            toast({
+                title: 'Success',
+                description: 'Your comment has been added.',
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to add comment. Please try again.',
+            });
+        }
+    });
+  };
+
+  const toggleCommentBox = (postId: string) => {
+    setActiveCommentBox(activeCommentBox === postId ? null : postId);
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -227,13 +269,49 @@ export default function FeedPage() {
                     />
                     Like ({post.likes.length})
                   </Button>
-                  <Button variant="ghost" className="flex-1">
-                    <MessageCircle className="mr-2 h-4 w-4" /> Comment
+                  <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)}>
+                    <MessageCircle className="mr-2 h-4 w-4" /> Comment ({post.comments.length})
                   </Button>
                   <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
                     <Share2 className="mr-2 h-4 w-4" /> Share
                   </Button>
                 </CardFooter>
+
+                {activeCommentBox === post.id && (
+                  <CardContent className="p-4 border-t">
+                      <div className="flex gap-4">
+                        {userAvatar && (
+                          <Avatar>
+                            <AvatarImage src={userAvatar.imageUrl} alt="Your avatar" />
+                            <AvatarFallback>
+                              {user?.displayName?.charAt(0) ?? 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className="w-full space-y-2">
+                          <Textarea
+                            placeholder="Write a comment..."
+                            value={commentContent}
+                            onChange={(e) => setCommentContent(e.target.value)}
+                            disabled={isPending}
+                          />
+                          <div className="flex justify-end">
+                            <Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>
+                              {isPending ? 'Commenting...' : 'Comment'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                    {post.comments.length > 0 && (
+                        <div className="mt-4 space-y-4">
+                            {post.comments.map((comment, index) => (
+                                <Comment key={index} comment={comment} />
+                            ))}
+                        </div>
+                    )}
+                  </CardContent>
+                )}
               </Card>
             );
           })

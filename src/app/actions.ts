@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -6,9 +7,8 @@ import {
   type PersonalizedFitnessRecommendationsOutput,
 } from '@/ai/flows/personalized-fitness-recommendations';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 export async function getRecommendationsAction(
   input: PersonalizedFitnessRecommendationsInput
@@ -20,10 +20,6 @@ export async function getRecommendationsAction(
     console.error('Error getting recommendations:', error);
     throw new Error('Failed to get recommendations. Please try again.');
   }
-}
-
-export async function navigateToDashboard() {
-  redirect('/dashboard');
 }
 
 export async function createPost(
@@ -38,6 +34,7 @@ export async function createPost(
       content,
       timestamp: serverTimestamp(),
       likes: [],
+      comments: [],
     });
     revalidatePath('/feed');
   } catch (error) {
@@ -72,3 +69,27 @@ export async function likePost(postId: string, userId: string) {
     throw new Error('Failed to like post.');
   }
 }
+
+export async function addComment(
+  postId: string,
+  comment: {
+    authorName: string;
+    authorAvatarUrl: string;
+    content: string;
+  }
+) {
+  try {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, {
+      comments: arrayUnion({
+        ...comment,
+        timestamp: Timestamp.now(),
+      }),
+    });
+    revalidatePath('/feed');
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    throw new Error('Failed to add comment.');
+  }
+}
+

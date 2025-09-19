@@ -24,8 +24,8 @@ import {
 } from '@/components/ui/form';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useToast } from '@/hooks/use-toast';
-import { navigateToDashboard } from '@/app/actions';
 import { Chrome } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z
   .object({
@@ -46,6 +46,7 @@ type SignupFormInputs = z.infer<typeof formSchema>;
 export default function SignupPage() {
   const { signUp, signInWithGoogle, loading } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<SignupFormInputs>({
     resolver: zodResolver(formSchema),
@@ -65,7 +66,7 @@ export default function SignupPage() {
         title: 'Success',
         description: 'Account created successfully!',
       });
-      await navigateToDashboard();
+      router.push('/dashboard');
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -83,7 +84,7 @@ export default function SignupPage() {
         title: 'Success',
         description: 'Account created successfully!',
       });
-      await navigateToDashboard();
+      router.push('/dashboard');
     } catch (error) {
       toast({
         variant: 'destructive',

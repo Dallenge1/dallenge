@@ -134,12 +134,20 @@ export default function FeedPage() {
   
   const handleShare = async (postId: string) => {
     if (navigator.clipboard && window.isSecureContext) {
-      const postUrl = `${window.location.origin}/feed#${postId}`;
-      await navigator.clipboard.writeText(postUrl);
-      toast({
-          title: 'Link Copied',
-          description: 'The link to the post has been copied to your clipboard.',
-      });
+      try {
+        const postUrl = `${window.location.origin}/feed#${postId}`;
+        await navigator.clipboard.writeText(postUrl);
+        toast({
+            title: 'Link Copied',
+            description: 'The link to the post has been copied to your clipboard.',
+        });
+      } catch (err) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not copy link.',
+        });
+      }
     } else {
         toast({
             variant: 'destructive',
@@ -178,6 +186,22 @@ export default function FeedPage() {
   const toggleCommentBox = (postId: string) => {
     setActiveCommentBox(activeCommentBox === postId ? null : postId);
   }
+
+  const renderProfileLink = (
+    post: Post,
+    children: React.ReactNode,
+    className?: string
+  ) => {
+    if (post.authorId) {
+      return (
+        <Link href={`/users/${post.authorId}`} className={className}>
+          {children}
+        </Link>
+      );
+    }
+    return <div className={cn('cursor-default', className)}>{children}</div>;
+  };
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -241,12 +265,12 @@ export default function FeedPage() {
         ) : (
           posts.map((post) => {
             const hasLiked = user ? post.likes.includes(user.uid) : false;
-            const profileLink = post.authorId ? `/users/${post.authorId}` : '#';
             return (
               <Card key={post.id} id={post.id} className="w-full">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <Link href={profileLink}>
+                    {renderProfileLink(
+                      post,
                       <Avatar>
                         <AvatarImage
                           src={post.authorAvatarUrl}
@@ -256,11 +280,14 @@ export default function FeedPage() {
                           {post.authorName.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                    </Link>
+                    )}
                     <div>
-                      <Link href={profileLink} className="hover:underline">
-                        <p className="font-semibold">{post.authorName}</p>
-                      </Link>
+                       {renderProfileLink(
+                        post,
+                        <p className="font-semibold hover:underline">
+                          {post.authorName}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {post.timestamp
                           ? formatDistanceToNow(post.timestamp.toDate(), {
@@ -349,3 +376,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    

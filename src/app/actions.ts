@@ -26,7 +26,8 @@ export async function createPost(
   authorId: string,
   authorName: string,
   authorAvatarUrl: string,
-  content: string
+  content: string,
+  imageUrl?: string | null
 ) {
   try {
     await addDoc(collection(db, 'posts'), {
@@ -34,6 +35,7 @@ export async function createPost(
       authorName,
       authorAvatarUrl,
       content,
+      imageUrl: imageUrl || null,
       timestamp: serverTimestamp(),
       likes: [],
       comments: [],

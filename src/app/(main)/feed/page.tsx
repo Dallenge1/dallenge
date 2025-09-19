@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Heart, Share2, CornerRightDown } from 'lucide-react';
+import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { createPost, likePost, addComment } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import Comment from './comment';
 import Link from 'next/link';
+import Image from 'next/image';
 
 type CommentData = {
   authorName: string;
@@ -40,6 +41,7 @@ type Post = {
   timestamp: Timestamp;
   likes: string[];
   comments: CommentData[];
+  imageUrl?: string;
 };
 
 export default function FeedPage() {
@@ -51,6 +53,10 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [commentContent, setCommentContent] = useState('');
   const [activeCommentBox, setActiveCommentBox] = useState<string | null>(null);
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
@@ -67,6 +73,7 @@ export default function FeedPage() {
           timestamp: data.timestamp,
           likes: data.likes || [],
           comments: data.comments || [],
+          imageUrl: data.imageUrl,
         });
       });
       setPosts(postsData);
@@ -84,18 +91,71 @@ export default function FeedPage() {
     return () => unsubscribe();
   }, [toast]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if(imageInputRef.current) {
+        imageInputRef.current.value = '';
+    }
+  }
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const imgbbApiKey = 'a12aae9588a45f9b3b1e1793a67c5a5f';
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+            method: 'POST',
+            body: formData,
+        });
+        if (!response.ok) throw new Error('Image upload failed.');
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error.message);
+        return result.data.display_url;
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Image Upload Error',
+            description: error instanceof Error ? error.message : 'Could not upload image.',
+        });
+        return null;
+    }
+  }
+
   const handlePost = () => {
-    if (!content.trim() || !user) return;
+    if (!content.trim() && !imageFile) return;
+    if (!user) return;
 
     startTransition(async () => {
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+        if (!imageUrl) return; // Stop if image upload fails
+      }
+      
       try {
         await createPost(
           user.uid,
           user.displayName || 'Anonymous',
           user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
-          content
+          content,
+          imageUrl
         );
         setContent('');
+        clearImage();
         toast({
           title: 'Success',
           description: 'Your post has been published.',
@@ -227,9 +287,21 @@ export default function FeedPage() {
               onChange={(e) => setContent(e.target.value)}
               disabled={isPending || !user}
             />
-            <div className="flex justify-end">
-              <Button onClick={handlePost} disabled={isPending || !content.trim() || !user}>
-                {isPending ? 'Posting...' : 'Post'}
+            {imagePreview && (
+                <div className="relative">
+                    <Image src={imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" />
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={clearImage} disabled={isPending}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+            <div className="flex justify-end items-center gap-2">
+              <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/png, image/jpeg, image/gif" className="hidden" disabled={isPending}/>
+              <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user}>
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+              <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile) || !user}>
+                {isPending ? <Loader2 className="animate-spin"/> : 'Post'}
               </Button>
             </div>
           </div>
@@ -298,8 +370,13 @@ export default function FeedPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                <CardContent className="space-y-4">
+                  {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
+                  {post.imageUrl && (
+                    <div className="relative mt-2 aspect-video overflow-hidden rounded-lg border">
+                       <Image src={post.imageUrl} alt="Post image" layout="fill" className="object-cover" />
+                    </div>
+                  )}
                 </CardContent>
                 <CardFooter className="flex justify-between border-t p-2">
                   <Button
@@ -376,5 +453,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    

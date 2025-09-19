@@ -23,12 +23,14 @@ export async function getRecommendationsAction(
 }
 
 export async function createPost(
+  authorId: string,
   authorName: string,
   authorAvatarUrl: string,
   content: string
 ) {
   try {
     await addDoc(collection(db, 'posts'), {
+      authorId,
       authorName,
       authorAvatarUrl,
       content,
@@ -92,4 +94,3 @@ export async function addComment(
     throw new Error('Failed to add comment.');
   }
 }
-

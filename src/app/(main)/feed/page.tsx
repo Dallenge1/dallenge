@@ -22,6 +22,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import Comment from './comment';
+import Link from 'next/link';
 
 type CommentData = {
   authorName: string;
@@ -32,6 +33,7 @@ type CommentData = {
 
 type Post = {
   id: string;
+  authorId: string;
   authorName: string;
   authorAvatarUrl: string;
   content: string;
@@ -58,6 +60,7 @@ export default function FeedPage() {
         const data = doc.data();
         postsData.push({
           id: doc.id,
+          authorId: data.authorId,
           authorName: data.authorName,
           authorAvatarUrl: data.authorAvatarUrl,
           content: data.content,
@@ -87,6 +90,7 @@ export default function FeedPage() {
     startTransition(async () => {
       try {
         await createPost(
+          user.uid,
           user.displayName || 'Anonymous',
           user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
           content
@@ -237,21 +241,26 @@ export default function FeedPage() {
         ) : (
           posts.map((post) => {
             const hasLiked = user ? post.likes.includes(user.uid) : false;
+            const profileLink = post.authorId ? `/users/${post.authorId}` : '#';
             return (
               <Card key={post.id} id={post.id} className="w-full">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage
-                        src={post.authorAvatarUrl}
-                        alt={post.authorName}
-                      />
-                      <AvatarFallback>
-                        {post.authorName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link href={profileLink}>
+                      <Avatar>
+                        <AvatarImage
+                          src={post.authorAvatarUrl}
+                          alt={post.authorName}
+                        />
+                        <AvatarFallback>
+                          {post.authorName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div>
-                      <p className="font-semibold">{post.authorName}</p>
+                      <Link href={profileLink} className="hover:underline">
+                        <p className="font-semibold">{post.authorName}</p>
+                      </Link>
                       <p className="text-xs text-muted-foreground">
                         {post.timestamp
                           ? formatDistanceToNow(post.timestamp.toDate(), {
@@ -340,5 +349,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    

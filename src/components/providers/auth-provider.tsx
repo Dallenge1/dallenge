@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Create a unique filename for the new avatar
     const fileName = `${Date.now()}.jpg`;
-    const storageRef = ref(storage, `avatars/${user.uid}/${fileName}`);
+    const storageRef = ref(storage, `profile-photos/${user.uid}/${fileName}`);
 
     try {
       // Step 1: Upload the file with metadata

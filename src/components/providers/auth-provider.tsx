@@ -22,7 +22,7 @@ interface AuthContextType {
   signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
-  updateUserPhoto: (file: File) => Promise<void>;
+  updateUserPhoto: (file: File | Blob) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,12 +83,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateUserPhoto = async (file: File) => {
+  const updateUserPhoto = async (file: File | Blob) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
     
     const imgbbApiKey = 'a12aae9588a45f9b3b1e1793a67c5a5f';
     const formData = new FormData();
-    formData.append('image', file);
+
+    // If it's a blob, we need to convert it to a file with a name
+    if (file instanceof Blob && !(file instanceof File)) {
+        const fileToUpload = new File([file], `profile-${user.uid}.jpg`, { type: 'image/jpeg' });
+        formData.append('image', fileToUpload);
+    } else {
+        formData.append('image', file);
+    }
 
     try {
       // Step 1: Upload the file to ImgBB

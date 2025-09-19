@@ -89,5 +89,3 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
 };
 
 export default ImageCropDialog;
-
-    

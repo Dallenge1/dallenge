@@ -171,18 +171,29 @@ export default function UserProfilePage() {
         </div>
     );
   }
+  
+  const handleMessage = () => {
+    toast({
+        title: 'Coming Soon!',
+        description: 'Direct messaging is not yet implemented.',
+    });
+  };
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <header className="flex items-center gap-4">
+      <header className="flex items-start gap-4">
         <Avatar className="h-24 w-24 border-2">
           <AvatarImage src={user.photoURL} alt={user.displayName} />
           <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
           <p className="text-muted-foreground">Viewing user's posts</p>
         </div>
+         {currentUser && currentUser.uid !== userId && (
+            <Button onClick={handleMessage}>Message</Button>
+        )}
       </header>
 
       <div className="space-y-4">

@@ -41,7 +41,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import React from 'react';
+import React, { useState } from 'react';
+import ImageCropDialog from './image-crop-dialog';
+import { getCroppedImg } from './crop-image';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -56,7 +58,13 @@ export default function ProfilePage() {
   const { user, updateUserPhoto, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
+  
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -85,24 +93,37 @@ export default function ProfilePage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && user) {
-      setIsUploading(true);
-      try {
-        await updateUserPhoto(file);
-        toast({
-          title: 'Success',
-          description: 'Profile picture updated successfully!',
-        });
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'Failed to upload image.',
-        });
-      } finally {
-        setIsUploading(false);
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setOriginalFile(file);
+      let imageDataUrl = await readFile(file);
+      setImageSrc(imageDataUrl);
+    }
+  };
+
+  const handleSaveCrop = async () => {
+    if (!imageSrc || !croppedAreaPixels || !originalFile) return;
+
+    setIsUploading(true);
+    try {
+      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      await updateUserPhoto(croppedImageBlob, originalFile.name);
+      toast({
+        title: 'Success',
+        description: 'Profile picture updated successfully!',
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+      });
+    } finally {
+      setIsUploading(false);
+      setImageSrc(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     }
   };
@@ -111,6 +132,21 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
+       {imageSrc && (
+        <ImageCropDialog
+          imageSrc={imageSrc}
+          crop={crop}
+          zoom={zoom}
+          setCrop={setCrop}
+          setZoom={setZoom}
+          onCroppedAreaChange={(croppedArea, croppedAreaPixels) => {
+            setCroppedAreaPixels(croppedAreaPixels);
+          }}
+          onClose={() => setImageSrc(null)}
+          onSave={handleSaveCrop}
+          isLoading={isUploading}
+        />
+      )}
       <header className="flex items-center gap-4">
         <div className="relative group">
           <Avatar className="h-24 w-24 border-4 border-background ring-2 ring-primary">
@@ -130,7 +166,7 @@ export default function ProfilePage() {
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleFileChange}
+            onChange={onFileChange}
             className="hidden"
             accept="image/png, image/jpeg"
             disabled={isLoading}
@@ -319,4 +355,12 @@ export default function ProfilePage() {
       </Accordion>
     </div>
   );
+}
+
+function readFile(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => resolve(reader.result as string), false);
+    reader.readAsDataURL(file);
+  });
 }

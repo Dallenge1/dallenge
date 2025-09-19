@@ -23,7 +23,7 @@ interface AuthContextType {
   signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
-  updateUserPhoto: (file: File) => Promise<void>;
+  updateUserPhoto: (blob: Blob, fileName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,16 +84,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateUserPhoto = async (file: File) => {
+  const updateUserPhoto = async (blob: Blob, fileName: string) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
-    setLoading(true);
     
-    const storageRef = ref(storage, `avatars/${user.uid}/${file.name}`);
+    const storageRef = ref(storage, `avatars/${user.uid}/${fileName}`);
 
     try {
       // Step 1: Upload the file
       try {
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, blob);
       } catch (error) {
         console.error("Firebase Storage upload failed:", error);
         throw new Error("Failed to upload image to storage. Check storage rules and configuration.");
@@ -126,8 +125,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       throw new Error("An unexpected error occurred during photo update.");
-    } finally {
-      setLoading(false);
     }
   };
 

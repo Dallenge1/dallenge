@@ -20,6 +20,7 @@ export const NAV_LINKS = [
   { href: '/personal-trainer', label: 'AI Personal Trainer', icon: Bot, description: "Get AI-powered fitness plans."},
   { href: '/tracking', label: 'Tracking', icon: ClipboardList, description: "Track your diet and exercise."},
   { href: '/feed', label: 'Social Feed', icon: Users, description: "Connect with the community." },
+  { href: '/users/all', label: 'All Users', icon: Users, description: "Browse all users in the community."},
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, description: "See who's at the top." },
   { href: '/profile', label: 'Profile', icon: User, description: 'Manage your account settings.' },
 ];
@@ -63,5 +64,3 @@ export const leaderboardData = [
   { id: 9, rank: 9, name: 'Emily White', points: 12100, avatarId: 'user-avatar-4' },
   { id: 10, rank: 10, name: 'Chris Lee', points: 11900, avatarId: 'user-avatar-11' },
 ];
-
-    

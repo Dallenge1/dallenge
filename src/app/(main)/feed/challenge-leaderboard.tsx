@@ -5,12 +5,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Coins, Loader2, Trophy, Award } from "lucide-react";
+import { Coins, Loader2, Trophy, Award, Download } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { generateWinnerImage, GenerateWinnerImageInput } from "./leaderboard-actions";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 
@@ -83,6 +83,16 @@ export default function ChallengeLeaderboard({ replies, challengeEnded }: Challe
                 </div>
             )}
           </div>
+           <DialogFooter>
+            {generatedImage && (
+              <a href={generatedImage} download={`dawion-challenge-winner.png`}>
+                <Button>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </a>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <div className="space-y-3">

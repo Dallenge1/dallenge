@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/providers/theme-provider';
-import { ThemeScript } from '@/components/theme-script';
 import { AuthProvider } from '@/components/providers/auth-provider';
+import { ThemeScript } from '@/components/theme-script';
 
 export const metadata: Metadata = {
   title: 'Dallenge',
@@ -27,12 +26,10 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

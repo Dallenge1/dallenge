@@ -12,6 +12,8 @@ import {
   doc,
   getDoc,
   Timestamp,
+  getDocs,
+  limit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -76,6 +78,23 @@ export default function ChatsPage() {
                             displayName: userData.displayName,
                             photoURL: userData.photoURL,
                         };
+                    } else {
+                        // Fallback to fetching user info from posts
+                        const postsQuery = query(
+                            collection(db, 'posts'),
+                            where('authorId', '==', otherUserId),
+                            orderBy('timestamp', 'desc'),
+                            limit(1)
+                        );
+                        const postsSnapshot = await getDocs(postsQuery);
+                        if (!postsSnapshot.empty) {
+                            const postData = postsSnapshot.docs[0].data();
+                            otherUser = {
+                                id: otherUserId,
+                                displayName: postData.authorName,
+                                photoURL: postData.authorAvatarUrl,
+                            };
+                        }
                     }
                 }
                 

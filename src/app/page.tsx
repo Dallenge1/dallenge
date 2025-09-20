@@ -24,9 +24,9 @@ export default function LandingPage() {
           <Image
             src="/dallenge.jpeg"
             alt="Dallenge Logo"
-            width={28}
-            height={28}
-            className="h-7 w-7 rounded-sm"
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-sm"
           />
           <span className="ml-2 text-lg font-bold">Dallenge</span>
         </Link>

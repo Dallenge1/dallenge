@@ -14,9 +14,9 @@ export default function AppSidebar() {
           <Image
             src="/dallenge.jpeg"
             alt="Dallenge Logo"
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-md"
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-md"
           />
           <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
             Dallenge

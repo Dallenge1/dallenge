@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins, Video } from 'lucide-react';
+import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins, Video, Clock } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { createPost, likePost, addComment, acceptChallenge, replyToChallenge, deletePost, addCoin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -32,7 +32,8 @@ import ChallengeReply from './challenge-reply';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import ChallengeLeaderboard from './challenge-leaderboard';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCountdown } from '@/hooks/use-countdown';
 
 type CommentData = {
   authorName: string;
@@ -58,6 +59,7 @@ type Post = {
   isChallengeReply?: boolean;
   originalChallengeId?: string;
   coins?: string[];
+  challengeEndsAt?: Timestamp;
 };
 
 export default function FeedPage() {
@@ -79,6 +81,7 @@ export default function FeedPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [isChallenge, setIsChallenge] = useState(false);
+  const [challengeDuration, setChallengeDuration] = useState('8');
   const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null, videoFile: File | null, videoPreview: string | null}}>({});
   const replyImageInputRef = useRef<HTMLInputElement>(null);
   const replyVideoInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +113,7 @@ export default function FeedPage() {
           isChallengeReply: data.isChallengeReply || false,
           originalChallengeId: data.originalChallengeId,
           coins: data.coins || [],
+          challengeEndsAt: data.challengeEndsAt,
         });
       });
       setPosts(postsData);
@@ -262,11 +266,13 @@ export default function FeedPage() {
           content,
           imageUrl,
           videoUrl,
-          isChallenge ? 'challenge' : 'post'
+          isChallenge ? 'challenge' : 'post',
+          isChallenge ? parseInt(challengeDuration) : undefined
         );
         setContent('');
         clearMedia();
         setIsChallenge(false);
+        setChallengeDuration('8');
         toast({
           title: 'Success',
           description: `Your ${isChallenge ? 'challenge' : 'post'} has been published.`,
@@ -395,9 +401,29 @@ export default function FeedPage() {
     return <Link href={`/users/${post.authorId}`} className={className}>{children}</Link>;
   };
 
+  const ChallengeTimer = ({ endsAt }: { endsAt: Timestamp }) => {
+    const { days, hours, minutes, seconds, isOver } = useCountdown(endsAt.toDate());
+
+    if (isOver) {
+      return <span className="text-sm font-semibold text-destructive">Challenge Ended</span>;
+    }
+
+    return (
+      <span className="font-mono text-sm text-muted-foreground">
+        {days > 0 && `${days}d `}
+        {hours.toString().padStart(2, '0')}:
+        {minutes.toString().padStart(2, '0')}:
+        {seconds.toString().padStart(2, '0')}
+      </span>
+    );
+  }
+
   const renderPostCard = (post: Post) => {
     const hasLiked = user ? post.likes.includes(user.uid) : false;
     const hasGivenCoin = user ? post.coins?.includes(user.uid) : false;
+    
+    const challengeHasEnded = post.challengeEndsAt ? post.challengeEndsAt.toDate() < new Date() : false;
+
     const hasAcceptedChallenge = user && post.type === 'challenge' ? post.challengeAcceptedBy?.includes(user.uid) : false;
     const replyState = replyStates[post.id] || {content: '', imageFile: null, imagePreview: null, videoFile: null, videoPreview: null};
     const isAuthor = user?.uid === post.authorId;
@@ -428,8 +454,13 @@ export default function FeedPage() {
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              {post.type === 'challenge' && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
-              {isAuthor && (
+              {post.type === 'challenge' && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-amber-500">
+                  <Trophy className="h-5 w-5" />
+                  <span>Challenge</span>
+                </div>
+              )}
+               {isAuthor && post.type === 'post' && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -450,6 +481,12 @@ export default function FeedPage() {
           {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
           {post.videoUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><video src={post.videoUrl} controls className="w-full h-full object-cover" /></div>)}
+           {post.type === 'challenge' && post.challengeEndsAt && (
+             <div className="flex items-center justify-end gap-2 pt-2 border-t mt-4">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <ChallengeTimer endsAt={post.challengeEndsAt} />
+             </div>
+           )}
         </CardContent>
         <CardFooter className="flex justify-between border-t p-2">
            {post.type === 'challenge' || post.isChallengeReply ? (
@@ -465,7 +502,7 @@ export default function FeedPage() {
            )}
           <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}><MessageCircle className="mr-2 h-4 w-4" />Comment ({post.comments.length})</Button>
           {post.type === 'challenge' && user && user.uid !== post.authorId ? (
-            <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id)} disabled={isPending || hasAcceptedChallenge}>
+            <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id)} disabled={isPending || hasAcceptedChallenge || challengeHasEnded}>
               {hasAcceptedChallenge ? <><CheckCircle className="mr-2 h-4 w-4 text-green-500"/>Accepted</> : <><Trophy className="mr-2 h-4 w-4"/>Accept</>}
             </Button>
           ) : <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>}
@@ -484,7 +521,7 @@ export default function FeedPage() {
           </CardContent>
         )}
 
-        {hasAcceptedChallenge && (
+        {hasAcceptedChallenge && !challengeHasEnded && (
            <CardContent className="p-4 border-t bg-muted/50">
              <div className="flex gap-4">
                 <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
@@ -545,7 +582,7 @@ export default function FeedPage() {
                   </div>
               </TabsContent>
               <TabsContent value="leaderboard" className="p-4 bg-muted/20">
-                <ChallengeLeaderboard replies={leaderboardEntries} />
+                <ChallengeLeaderboard replies={leaderboardEntries} challengeEnded={challengeHasEnded}/>
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -588,7 +625,24 @@ export default function FeedPage() {
             <Textarea placeholder={isChallenge ? "Describe your challenge..." : "What's on your mind?"} value={content} onChange={(e) => setContent(e.target.value)} disabled={isPending || !user}/>
             {imagePreview && (<div className="relative"><Image src={imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(true, false)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
             {videoPreview && (<div className="relative"><video src={videoPreview} controls className="rounded-lg max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(false, true)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
-            <div className="flex justify-between items-center gap-2">
+            
+            {isChallenge && (
+              <div className='pt-2'>
+                <Label htmlFor='duration-select'>Challenge Duration</Label>
+                <Select value={challengeDuration} onValueChange={setChallengeDuration} disabled={isPending || !user}>
+                  <SelectTrigger id='duration-select' className="w-48">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => i + 1).map(hour => (
+                      <SelectItem key={hour} value={String(hour)}>{hour} {hour > 1 ? 'hours' : 'hour'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className="flex justify-between items-center gap-2 pt-2">
               <div className="flex items-center space-x-2">
                 <Switch id="challenge-mode" checked={isChallenge} onCheckedChange={setIsChallenge} disabled={isPending || !user}/><Label htmlFor="challenge-mode" className={cn(isChallenge && "text-amber-500 font-semibold")}>Challenge</Label>
               </div>

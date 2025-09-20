@@ -26,11 +26,11 @@ export async function createPost(
   content: string,
   imageUrl: string | null,
   videoUrl: string | null,
-  postType: 'post' | 'challenge' = 'post'
+  postType: 'post' | 'challenge' = 'post',
+  challengeDurationHours?: number
 ) {
   try {
-    
-    await addDoc(collection(db, 'posts'), {
+    const postData: any = {
       authorId,
       authorName,
       authorAvatarUrl,
@@ -41,12 +41,21 @@ export async function createPost(
       likes: [],
       comments: [],
       type: postType,
-      ...(postType === 'challenge' && { 
-        challengeAcceptedBy: [], 
-        challengeReplies: [],
-        coins: []
-      }),
-    });
+    };
+    
+    if (postType === 'challenge') {
+      postData.challengeAcceptedBy = [];
+      postData.challengeReplies = [];
+      postData.coins = [];
+      if (challengeDurationHours) {
+        const now = Timestamp.now();
+        const seconds = now.seconds + challengeDurationHours * 60 * 60;
+        postData.challengeEndsAt = new Timestamp(seconds, now.nanoseconds);
+      }
+    }
+
+    await addDoc(collection(db, 'posts'), postData);
+
     revalidatePath('/feed');
     revalidatePath(`/users/${authorId}`);
   } catch (error) {
@@ -108,6 +117,7 @@ export async function addCoin(postId: string, userId: string) {
       if (authorId) {
         revalidatePath(`/users/${authorId}`);
       }
+      revalidatePath('/leaderboard');
     }
   } catch (error) {
     console.error('Error adding coin:', error);

@@ -3,9 +3,9 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Coins } from "lucide-react";
+import { Coins, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -19,9 +19,10 @@ type Post = {
 
 type ChallengeLeaderboardProps = {
   replies: Post[];
+  challengeEnded: boolean;
 };
 
-export default function ChallengeLeaderboard({ replies }: ChallengeLeaderboardProps) {
+export default function ChallengeLeaderboard({ replies, challengeEnded }: ChallengeLeaderboardProps) {
   const sortedReplies = useMemo(() => {
     return [...replies].sort((a, b) => (b.coins?.length || 0) - (a.coins?.length || 0));
   }, [replies]);
@@ -36,10 +37,17 @@ export default function ChallengeLeaderboard({ replies }: ChallengeLeaderboardPr
 
   return (
     <div className="space-y-3">
+        <CardHeader className="p-3 pb-0">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2"><Trophy className="h-5 w-5"/> Leaderboard</CardTitle>
+            {challengeEnded && <Badge variant="secondary">Final</Badge>}
+          </div>
+        </CardHeader>
+      <CardContent className="p-3">
       {sortedReplies.map((reply, index) => {
         const rank = index + 1;
         return (
-          <Card key={reply.id} className="p-3">
+          <Card key={reply.id} className="p-3 mb-2 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-8">
                  {rank <= 3 ? (
@@ -79,6 +87,7 @@ export default function ChallengeLeaderboard({ replies }: ChallengeLeaderboardPr
           </Card>
         );
       })}
+      </CardContent>
     </div>
   );
 }

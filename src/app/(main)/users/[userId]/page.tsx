@@ -17,13 +17,15 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Coins, Trophy, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
-import { likePost } from '@/app/actions';
+import { likePost, addCoin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { getOrCreateChat } from '@/app/chat-actions';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 type UserData = {
   displayName: string;
@@ -47,6 +49,9 @@ type Post = {
   timestamp: Timestamp;
   likes: string[];
   comments: CommentData[];
+  type: 'post' | 'challenge';
+  isChallengeReply?: boolean;
+  coins?: string[];
 };
 
 export default function UserProfilePage() {
@@ -61,6 +66,8 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+
+  const isCurrentUserProfile = currentUser?.uid === userId;
 
   useEffect(() => {
     if (!userId) return;
@@ -95,6 +102,9 @@ export default function UserProfilePage() {
           timestamp: data.timestamp,
           likes: data.likes || [],
           comments: data.comments || [],
+          type: data.type || 'post',
+          isChallengeReply: data.isChallengeReply || false,
+          coins: data.coins || [],
         });
       });
       
@@ -118,6 +128,11 @@ export default function UserProfilePage() {
   const handleLike = (postId: string) => {
     if (!currentUser) return;
     likePost(postId, currentUser.uid).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to like post.'}));
+  };
+  
+  const handleAddCoin = (postId: string) => {
+    if (!currentUser) return;
+    addCoin(postId, currentUser.uid).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to add coin.' }));
   };
 
   const handleShare = async (postId: string) => {
@@ -191,6 +206,59 @@ export default function UserProfilePage() {
     });
   };
 
+  const renderPostCard = (post: Post) => {
+    const hasLiked = currentUser ? post.likes.includes(currentUser.uid) : false;
+    const hasGivenCoin = currentUser ? post.coins?.includes(currentUser.uid) : false;
+
+    return (
+      <Card key={post.id} id={post.id} className="w-full">
+        <CardHeader>
+           <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
+                <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold">{post.authorName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {post.timestamp
+                    ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })
+                    : 'just now'}
+                </p>
+              </div>
+            </div>
+             {post.type === 'challenge' && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+        </CardContent>
+        <CardFooter className="flex justify-between border-t p-2">
+           {post.type === 'challenge' || post.isChallengeReply ? (
+            <Button variant="ghost" className="flex-1" onClick={() => handleAddCoin(post.id)} disabled={isPending || !currentUser}>
+              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-amber-500')} />
+              Coin ({post.coins?.length ?? 0})
+            </Button>
+           ) : (
+            <Button variant="ghost" className="flex-1" onClick={() => handleLike(post.id)} disabled={!currentUser}>
+              <Heart className={cn('mr-2 h-4 w-4', hasLiked && 'fill-red-500 text-red-500')} />
+              Like ({post.likes.length})
+            </Button>
+           )}
+          <Button variant="ghost" className="flex-1" disabled>
+            <MessageCircle className="mr-2 h-4 w-4" /> Comment ({post.comments.length})
+          </Button>
+          <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
+            <Share2 className="mr-2 h-4 w-4" /> Share
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  };
+
+  const regularPosts = posts.filter(p => p.type === 'post');
+  const challengePosts = posts.filter(p => p.type === 'challenge');
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -201,60 +269,45 @@ export default function UserProfilePage() {
         </Avatar>
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
-          <p className="text-muted-foreground">Viewing user's posts</p>
+          <p className="text-muted-foreground">
+             {isCurrentUserProfile ? "Your public profile and posts." : `Viewing ${user.displayName}'s posts.`}
+          </p>
         </div>
-         {currentUser && currentUser.uid !== userId && (
+         {currentUser && !isCurrentUserProfile && (
             <Button onClick={handleMessage} disabled={isPending}>
                 {isPending ? 'Starting chat...' : 'Message'}
             </Button>
         )}
+        {isCurrentUserProfile && (
+            <Button asChild variant="outline">
+                <Link href="/profile">
+                    <Edit className="mr-2 h-4 w-4"/>
+                    Edit Profile
+                </Link>
+            </Button>
+        )}
       </header>
 
-      <div className="space-y-4">
-        {posts.map((post) => {
-          const hasLiked = currentUser ? post.likes.includes(currentUser.uid) : false;
-          return (
-            <Card key={post.id} id={post.id} className="w-full">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
-                    <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{post.authorName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {post.timestamp
-                        ? formatDistanceToNow(post.timestamp.toDate(), { addSuffix: true })
-                        : 'just now'}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-              </CardContent>
-              <CardFooter className="flex justify-between border-t p-2">
-                <Button variant="ghost" className="flex-1" onClick={() => handleLike(post.id)} disabled={!currentUser}>
-                  <Heart className={cn('mr-2 h-4 w-4', hasLiked && 'fill-red-500 text-red-500')} />
-                  Like ({post.likes.length})
-                </Button>
-                <Button variant="ghost" className="flex-1" disabled>
-                  <MessageCircle className="mr-2 h-4 w-4" /> Comment ({post.comments.length})
-                </Button>
-                <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}>
-                  <Share2 className="mr-2 h-4 w-4" /> Share
-                </Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
-        {posts.length === 0 && (
-            <div className="text-center py-10">
-                <p className="text-muted-foreground">This user hasn't posted anything yet.</p>
-            </div>
-        )}
-      </div>
+      {posts.length > 0 ? (
+         <Tabs defaultValue="posts" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="posts">Posts ({regularPosts.length})</TabsTrigger>
+              <TabsTrigger value="challenges">Challenges ({challengePosts.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="posts" className="space-y-4 mt-4">
+              {regularPosts.map(renderPostCard)}
+              {regularPosts.length === 0 && <p className="text-muted-foreground text-center py-4">No posts yet.</p>}
+            </TabsContent>
+            <TabsContent value="challenges" className="space-y-4 mt-4">
+              {challengePosts.map(renderPostCard)}
+              {challengePosts.length === 0 && <p className="text-muted-foreground text-center py-4">No challenges posted yet.</p>}
+            </TabsContent>
+          </Tabs>
+      ) : (
+          <div className="text-center py-10 border rounded-lg">
+              <p className="text-muted-foreground">This user hasn't posted anything yet.</p>
+          </div>
+      )}
     </div>
   );
 }

@@ -47,7 +47,10 @@ export default function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/profile">Profile</Link>
+            <Link href={user ? `/users/${user.uid}` : '/profile'}>Profile</Link>
+          </DropdownMenuItem>
+           <DropdownMenuItem asChild>
+            <Link href="/profile">Edit Profile</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>Settings</DropdownMenuItem>
         </DropdownMenuGroup>

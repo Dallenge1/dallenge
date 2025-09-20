@@ -17,7 +17,8 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -146,24 +147,22 @@ export default function FeedPage() {
   }
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    const imgbbApiKey = 'a12aae9588a45f9b3b1e1793a67c5a5f';
-    const formData = new FormData();
-    formData.append('image', file);
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload an image.'});
+        return null;
+    }
 
     try {
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
-            method: 'POST',
-            body: formData,
-        });
-        if (!response.ok) throw new Error('Image upload failed.');
-        const result = await response.json();
-        if (!result.success) throw new Error(result.error.message);
-        return result.data.display_url;
+        const fileRef = ref(storage, `posts/${user.uid}/${Date.now()}-${file.name}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
     } catch (error) {
+        console.error("Error uploading image to Firebase Storage:", error);
         toast({
             variant: 'destructive',
             title: 'Image Upload Error',
-            description: error instanceof Error ? error.message : 'Could not upload image.',
+            description: 'Could not upload image.',
         });
         return null;
     }
@@ -414,7 +413,7 @@ export default function FeedPage() {
            </CardContent>
         )}
         
-        {post.type === 'challenge' && (challengeReplies.length > 0 || post.coins.length > 0) && (
+        {post.type === 'challenge' && (challengeReplies.length > 0 || (post.coins && post.coins.length > 0)) && (
           <CardContent className='p-0 border-t'>
             <Tabs defaultValue="replies" className="w-full">
               <TabsList className="grid w-full grid-cols-2 rounded-none">
@@ -505,3 +504,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    

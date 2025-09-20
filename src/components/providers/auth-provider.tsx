@@ -12,7 +12,8 @@ import {
   updateProfile,
   signInWithPopup,
 } from 'firebase/auth';
-import { auth as firebaseAuth, googleProvider } from '@/lib/firebase';
+import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
 
 interface AuthContextType {
@@ -86,49 +87,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUserPhoto = async (file: File | Blob) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
     
-    const imgbbApiKey = 'a12aae9588a45f9b3b1e1793a67c5a5f';
-    const formData = new FormData();
+    let fileToUpload: File;
 
-    // If it's a blob, we need to convert it to a file with a name
     if (file instanceof Blob && !(file instanceof File)) {
-        const fileToUpload = new File([file], `profile-${user.uid}.jpg`, { type: 'image/jpeg' });
-        formData.append('image', fileToUpload);
+        fileToUpload = new File([file], `profile-${user.uid}.jpg`, { type: 'image/jpeg' });
     } else {
-        formData.append('image', file);
+        fileToUpload = file as File;
     }
 
     try {
-      // Step 1: Upload the file to ImgBB
-      console.log('Uploading to ImgBB...');
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ImgBB upload failed: ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(`ImgBB API error: ${result.error.message}`);
-      }
-      
-      const photoURL = result.data.display_url;
-      console.log('ImgBB upload successful. URL:', photoURL);
+      // Step 1: Upload the file to Firebase Storage
+      const fileRef = ref(storage, `avatars/${user.uid}/${fileToUpload.name}`);
+      const snapshot = await uploadBytes(fileRef, fileToUpload);
+      const photoURL = await getDownloadURL(snapshot.ref);
 
       // Step 2: Update the user's profile in Firebase Auth
-      console.log('Updating Firebase profile...');
       await updateProfile(user, { photoURL });
-      console.log('Firebase profile updated.');
       
       // Step 3: Update local user state to trigger re-render
       setUser({ ...user, photoURL }); 
 
     } catch (error) {
-      console.error("Overall error in updateUserPhoto:", error);
+      console.error("Error in updateUserPhoto:", error);
       if (error instanceof Error) {
         throw error;
       }
@@ -174,3 +154,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

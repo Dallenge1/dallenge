@@ -22,13 +22,6 @@ export default function LandingPage() {
           className="flex items-center justify-center"
           prefetch={false}
         >
-          <Image
-            src="/dallenge.jpeg"
-            alt="Dallenge Logo"
-            width={24}
-            height={24}
-            className="h-6 w-6 rounded-sm"
-          />
           <span className="ml-2 text-lg font-bold">Dallenge</span>
         </Link>
         <nav className="ml-auto flex gap-2 sm:gap-4 items-center">

@@ -6,7 +6,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { MediaPart } from 'genkit/cohere';
 
 const GenerateWinnerImageInputSchema = z.object({
   rank: z.number().describe('The rank of the winner (e.g., 1, 2, 3).'),
@@ -51,9 +50,8 @@ const generateWinnerImageFlow = ai.defineFlow(
 
     const rankText = rank === 1 ? '1st Place' : rank === 2 ? '2nd Place' : '3rd Place';
 
-    const avatarDataUri = await urlToDataUri(userAvatarUrl);
-
-    const { media } = await ai.generate({
+    // Step 1: Generate the base certificate without the avatar.
+    const { media: baseCertificate } = await ai.generate({
         model: 'googleai/imagen-4.0-fast-generate-001',
         prompt: `Create a visually stunning and celebratory winner's certificate image for a challenge on the "DAWION" app.
 
@@ -62,30 +60,47 @@ const generateWinnerImageFlow = ai.defineFlow(
         - **Challenge Title:** Feature the text: "${challengeTitle}".
         - **Winner's Name:** Prominently display the winner's name: "${userName}".
         - **Rank:** Clearly show the achievement: "${rankText}".
-        - **Avatar:** Include the user's avatar in the design, perhaps in a circular frame. The avatar is provided as an image input.
+        - **Avatar Placeholder:** Leave a clean, empty, circular space in the center of the design where a user's avatar can be placed later. This space should be distinct and well-defined.
         - **Theme:** The overall theme should be celebratory and prestigious. Think gold accents, laurels, a trophy or medal icon, and a clean, modern design. The background should be elegant, perhaps a subtle gradient or pattern.
         
         **Layout guidance:**
         1. "DAWION" at the top.
         2. A graphic element like a trophy or laurel wreath.
         3. The rank "${rankText}" below the graphic.
-        4. The winner's avatar, integrated cleanly.
+        4. The circular placeholder for the avatar.
         5. The winner's name, "${userName}".
         6. A statement like "For conquering the challenge:".
         7. The challenge title: "${challengeTitle}".
         
         The image should be high-quality and suitable for sharing on social media. Aspect ratio should be square (1:1).`,
-        media: [
-            { url: avatarDataUri }
-        ]
     });
 
-    if (!media.url) {
-      throw new Error('Image generation failed to produce an image.');
+    if (!baseCertificate.url) {
+      throw new Error('Base certificate generation failed.');
+    }
+
+    const avatarDataUri = await urlToDataUri(userAvatarUrl);
+
+    // Step 2: Composite the avatar onto the base certificate.
+    const { media: finalImage } = await ai.generate({
+        model: 'googleai/gemini-2.5-flash-image-preview',
+        prompt: [
+            { text: `Take the user's avatar image and place it neatly inside the empty circular placeholder on the winner's certificate. Ensure the avatar fits perfectly within the circle and looks natural.` },
+            { media: { url: baseCertificate.url } }, // The certificate
+            { media: { url: avatarDataUri } }      // The user's avatar
+        ],
+        config: {
+            responseModalities: ['IMAGE'],
+        }
+    });
+
+
+    if (!finalImage.url) {
+      throw new Error('Image generation failed to produce a final image.');
     }
 
     return {
-      imageUrl: media.url,
+      imageUrl: finalImage.url,
     };
   }
 );

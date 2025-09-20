@@ -21,10 +21,10 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Heart, MessageCircle, Share2, Coins, Trophy, CalendarIcon, Upload, Loader2, Video, User, Lock, ShieldAlert } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Coins, Trophy, CalendarIcon, Upload, Loader2, Video, User, Lock, ShieldAlert, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
-import { likePost, addCoin } from '@/app/actions';
+import { likePost, addCoin, deletePost } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { getOrCreateChat } from '@/app/chat-actions';
@@ -34,6 +34,9 @@ import { Area } from 'react-easy-crop';
 import ImageCropDialog from '@/app/(main)/profile/image-crop-dialog';
 import { getCroppedImg } from '@/app/(main)/profile/crop-image';
 import Image from 'next/image';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 type UserData = {
   displayName: string;
@@ -81,6 +84,8 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   const isCurrentUserProfile = currentUser?.uid === userId;
   
@@ -264,6 +269,26 @@ export default function UserProfilePage() {
     }
   };
 
+  const handleDeletePost = (postId: string) => {
+    setPostToDelete(postId);
+    setDeleteAlertOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!postToDelete || !currentUser) return;
+    startTransition(async () => {
+      try {
+        await deletePost(postToDelete, currentUser.uid);
+        toast({ title: 'Post Deleted', description: 'Your post has been successfully deleted.' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete post.' });
+      } finally {
+        setDeleteAlertOpen(false);
+        setPostToDelete(null);
+      }
+    });
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -332,7 +357,23 @@ export default function UserProfilePage() {
                 </p>
               </div>
             </div>
-             {post.type === 'challenge' && !post.isChallengeReply && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
+             <div className="flex items-center gap-2">
+                {post.type === 'challenge' && !post.isChallengeReply && (<div className="flex items-center gap-2 text-sm font-semibold text-primary"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
+                {isCurrentUserProfile && (
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive">
+                        Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -344,7 +385,7 @@ export default function UserProfilePage() {
         <CardFooter className="flex justify-between border-t p-2">
            {post.type === 'challenge' || post.isChallengeReply ? (
             <Button variant="ghost" className="flex-1" onClick={() => handleAddCoin(post.id)} disabled={isPending || !currentUser}>
-              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-yellow-400')} />
+              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-primary')} />
               Coin ({post.coins?.length ?? 0})
             </Button>
            ) : (
@@ -370,6 +411,22 @@ export default function UserProfilePage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
+        <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this post.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDelete} disabled={isPending}>
+                {isPending ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
         {imageSrc && (
             <ImageCropDialog
             imageSrc={imageSrc}
@@ -410,7 +467,7 @@ export default function UserProfilePage() {
         <div className="flex-1">
             <div className='flex items-center gap-4'>
                 <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
-                <div className="flex items-center gap-2 text-lg font-mono text-yellow-400">
+                <div className="flex items-center gap-2 text-lg font-mono text-primary">
                     <Coins className="h-6 w-6" />
                     <span className="font-semibold">{totalCoins.toLocaleString()}</span>
                 </div>
@@ -478,3 +535,5 @@ export default function UserProfilePage() {
     </div>
   );
 }
+
+    

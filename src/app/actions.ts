@@ -213,13 +213,16 @@ export async function replyToChallenge(
   }
 }
 
-export async function deletePost(postId: string) {
+export async function deletePost(postId: string, userId: string) {
     try {
         const postRef = doc(db, 'posts', postId);
         await deleteDoc(postRef);
         revalidatePath('/feed');
+        revalidatePath(`/users/${userId}`);
     } catch (error) {
         console.error('Error deleting post:', error);
         throw new Error('Failed to delete post.');
     }
 }
+
+    

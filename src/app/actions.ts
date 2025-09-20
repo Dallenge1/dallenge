@@ -225,4 +225,19 @@ export async function deletePost(postId: string, userId: string) {
     }
 }
 
-    
+export async function submitFeedback(data: {
+    category: string;
+    message: string;
+    userId: string;
+    userDisplayName: string;
+}) {
+    try {
+        await addDoc(collection(db, 'feedback'), {
+            ...data,
+            submittedAt: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        throw new Error('Failed to submit feedback.');
+    }
+}

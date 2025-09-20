@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -32,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { submitFeedback } from '@/app/actions';
 
 const feedbackFormSchema = z.object({
   category: z.string({
@@ -62,17 +64,26 @@ export default function FeedbackPage() {
   });
 
   function onSubmit(data: FeedbackFormValues) {
-    startTransition(() => {
-      // Simulate an API call
-      console.log('Feedback submitted:', { ...data, userId: user?.uid });
-      
-      // In a real app, you would send this data to your backend (e.g., a Firestore collection)
-      // For now, just show a success toast.
-      toast({
-        title: 'Feedback Submitted',
-        description: "Thank you for your feedback! We've received your message.",
-      });
-      form.reset();
+    if (!user) return;
+    startTransition(async () => {
+      try {
+        await submitFeedback({
+            ...data,
+            userId: user.uid,
+            userDisplayName: user.displayName || 'Anonymous',
+        });
+        toast({
+          title: 'Feedback Submitted',
+          description: "Thank you for your feedback! We've received your message.",
+        });
+        form.reset();
+      } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Submission Failed',
+            description: 'Could not submit your feedback. Please try again.',
+        });
+      }
     });
   }
 

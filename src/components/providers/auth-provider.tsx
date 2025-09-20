@@ -49,6 +49,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             photoURL: user.photoURL,
             createdAt: serverTimestamp(),
             uid: user.uid,
+            followers: [],
+            following: [],
         }, { merge: true });
       }
   }
@@ -268,3 +270,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

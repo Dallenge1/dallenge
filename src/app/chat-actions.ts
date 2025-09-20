@@ -16,6 +16,7 @@ import {
   getDocs,
   increment,
 } from 'firebase/firestore';
+import { revalidatePath } from 'next/cache';
 
 async function getChatId(currentUserId: string, otherUserId: string): Promise<string> {
   // Sort IDs to ensure the chat ID is always the same regardless of who starts it
@@ -113,6 +114,8 @@ export async function sendMessage(
             }, { merge: true });
         }
     }
+    revalidatePath(`/chat/${chatId}`);
+    revalidatePath('/chat');
 
   } catch (error) {
     console.error('Error sending message:', error);
@@ -136,3 +139,5 @@ export async function markChatAsRead(chatId: string, userId: string) {
         // We don't throw here, as it's not critical if this fails
     }
 }
+
+    

@@ -36,6 +36,8 @@ import { getCroppedImg } from '@/app/(main)/profile/crop-image';
 import Image from 'next/image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toggleFollow } from '@/app/follow-actions';
+import UserListDialog from './user-list-dialog';
 
 
 type UserData = {
@@ -46,6 +48,8 @@ type UserData = {
   bio?: string;
   dob?: Date;
   phone?: string;
+  followers?: string[];
+  following?: string[];
 };
 
 type CommentData = {
@@ -96,6 +100,10 @@ export default function UserProfilePage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [dialogOpen, setDialogOpen] = useState<'followers' | 'following' | null>(null);
+  
+  const isFollowing = user?.followers?.includes(currentUser?.uid ?? '') ?? false;
+
   useEffect(() => {
     if (!userId) return;
 
@@ -112,6 +120,8 @@ export default function UserProfilePage() {
                 bio: userData.bio,
                 dob: userData.dob?.toDate(),
                 phone: userData.phone,
+                followers: userData.followers || [],
+                following: userData.following || [],
             });
             setLoading(false);
         } else {
@@ -128,6 +138,8 @@ export default function UserProfilePage() {
                 setUser({
                     displayName: postData.authorName,
                     photoURL: postData.authorAvatarUrl,
+                    followers: [],
+                    following: [],
                 });
             }
             setLoading(false);
@@ -324,7 +336,7 @@ export default function UserProfilePage() {
     startTransition(async () => {
         try {
             const chatId = await getOrCreateChat(currentUser.uid, userId);
-            router.push(`/chat/${chatId}`);
+            router.push(`/chat/${chatId}?displayName=${encodeURIComponent(user.displayName)}&photoURL=${encodeURIComponent(user.photoURL)}`);
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -334,6 +346,21 @@ export default function UserProfilePage() {
         }
     });
   };
+
+  const handleFollowToggle = () => {
+      if (!currentUser || isCurrentUserProfile) return;
+      startTransition(async () => {
+        try {
+          await toggleFollow(currentUser.uid, userId);
+        } catch(error) {
+           toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not complete action. Please try again.',
+            });
+        }
+      });
+  }
 
   const renderPostCard = (post: Post) => {
     const hasLiked = currentUser ? post.likes.includes(currentUser.uid) : false;
@@ -440,7 +467,7 @@ export default function UserProfilePage() {
             isLoading={isUploading}
             />
         )}
-      <header className="flex items-start gap-4">
+      <header className="flex flex-col md:flex-row items-start gap-4">
         <div className={cn("relative group", isCurrentUserProfile && "cursor-pointer")} onClick={handleAvatarClick}>
             <Avatar className="h-24 w-24 border-2">
                 <AvatarImage src={user.photoURL} alt={user.displayName} />
@@ -464,25 +491,39 @@ export default function UserProfilePage() {
                 disabled={isMutationPending}
             />
         </div>
-        <div className="flex-1">
-            <div className='flex items-center gap-4'>
+        <div className="flex-1 w-full">
+            <div className='flex flex-wrap items-center gap-4'>
                 <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
                 <div className="flex items-center gap-2 text-lg font-mono text-primary">
                     <Coins className="h-6 w-6" />
                     <span className="font-semibold">{totalCoins.toLocaleString()}</span>
                 </div>
             </div>
-          <p className="text-muted-foreground">
-             {isCurrentUserProfile ? user.email : `Viewing ${user.displayName}'s posts.`}
-          </p>
+          <div className="flex flex-wrap items-center gap-4 text-sm mt-2">
+            <button onClick={() => setDialogOpen('followers')} className="hover:underline disabled:cursor-not-allowed disabled:no-underline" disabled={user.followers?.length === 0}>
+                <span className="font-bold">{user.followers?.length ?? 0}</span>
+                <span className="text-muted-foreground"> Followers</span>
+            </button>
+             <button onClick={() => setDialogOpen('following')} className="hover:underline disabled:cursor-not-allowed disabled:no-underline" disabled={user.following?.length === 0}>
+                <span className="font-bold">{user.following?.length ?? 0}</span>
+                <span className="text-muted-foreground"> Following</span>
+            </button>
+          </div>
            {user.bio && <p className="text-sm max-w-prose mt-2">{user.bio}</p>}
            {user.dob && <p className="text-sm text-muted-foreground">Born {format(new Date(user.dob), 'MMMM d, yyyy')}</p>}
+           {isCurrentUserProfile ? (
+             <Button asChild className="mt-4" variant="outline"><Link href="/settings">Edit Profile</Link></Button>
+           ) : currentUser && (
+             <div className="flex gap-2 mt-4">
+                <Button onClick={handleFollowToggle} disabled={isPending} variant={isFollowing ? 'secondary' : 'default'}>
+                    {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : (isFollowing ? 'Following' : 'Follow')}
+                </Button>
+                <Button onClick={handleMessage} disabled={isPending} variant="outline">
+                    {isPending ? '...' : 'Message'}
+                </Button>
+             </div>
+           )}
         </div>
-         {currentUser && !isCurrentUserProfile && (
-            <Button onClick={handleMessage} disabled={isPending}>
-                {isPending ? 'Starting chat...' : 'Message'}
-            </Button>
-        )}
       </header>
 
       {posts.length > 0 ? (
@@ -532,8 +573,17 @@ export default function UserProfilePage() {
                )}
           </div>
       )}
+      
+      <UserListDialog 
+        isOpen={!!dialogOpen}
+        onClose={() => setDialogOpen(null)}
+        title={dialogOpen === 'followers' ? 'Followers' : 'Following'}
+        userIds={dialogOpen === 'followers' ? (user.followers || []) : (user.following || [])}
+      />
     </div>
   );
 }
+
+    
 
     

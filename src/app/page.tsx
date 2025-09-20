@@ -24,7 +24,7 @@ export default function LandingPage() {
           prefetch={false}
         >
           <BrainCircuit className="h-6 w-6 text-primary" />
-          <span className="ml-2 text-lg font-bold">DAWION</span>
+          <span className="ml-2 text-lg font-bold">Dallenge</span>
         </Link>
         <nav className="ml-auto flex gap-2 sm:gap-4 items-center">
           <ThemeToggle />
@@ -43,7 +43,7 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-4">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                    Unlock Your Potential with DAWION
+                    Unlock Your Potential with Dallenge
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
                     Your all-in-one platform for learning, wellness, and
@@ -84,7 +84,7 @@ export default function LandingPage() {
                 </h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   From AI-powered personal training to brain-teasing games and a
-                  supportive community, DAWION has it all.
+                  supportive community, Dallenge has it all.
                 </p>
               </div>
             </div>
@@ -130,7 +130,7 @@ export default function LandingPage() {
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 Join thousands of users who are transforming their lives with
-                DAWION. Sign up today and unlock your full potential.
+                Dallenge. Sign up today and unlock your full potential.
               </p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2">
@@ -143,7 +143,7 @@ export default function LandingPage() {
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">
-          &copy; 2024 DAWION. All rights reserved.
+          &copy; 2024 Dallenge. All rights reserved.
         </p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link

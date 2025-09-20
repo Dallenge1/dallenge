@@ -13,7 +13,7 @@ export default function AppSidebar() {
         <div className="flex w-full items-center gap-2 p-2">
             <BrainCircuit className="h-8 w-8 text-primary" />
             <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            DAWION
+            Dallenge
             </span>
         </div>
       </SidebarHeader>

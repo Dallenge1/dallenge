@@ -60,10 +60,10 @@ const generateWinnerImageFlow = ai.defineFlow(
     // Step 1: Generate the base certificate without the avatar.
     const { media: baseCertificate } = await ai.generate({
         model: 'googleai/imagen-4.0-fast-generate-001',
-        prompt: `Create a vibrant, trendy, and celebratory social media graphic for a winner on the "DAWION" app. The style should be modern and energetic, perfect for a Gen Z audience.
+        prompt: `Create a vibrant, trendy, and celebratory social media graphic for a winner on the "Dallenge" app. The style should be modern and energetic, perfect for a Gen Z audience.
 
         **Key Elements & Style:**
-        - **App Name:** "DAWION" should be integrated stylishly.
+        - **App Name:** "Dallenge" should be integrated stylishly.
         - **Challenge Title:** Feature the text: "${challengeTitle}".
         - **Winner's Name:** Display "${userName}" in a bold, modern font.
         - **Rank:** Clearly show the achievement: "${rankText}". Use colors appropriate for the rank (e.g., gold for 1st).
@@ -73,7 +73,7 @@ const generateWinnerImageFlow = ai.defineFlow(
         **Layout Idea:**
         1. Place the circular avatar placeholder prominently.
         2. Arrange the winner's name, rank, and challenge title around it in a dynamic, visually interesting composition.
-        3. The "DAWION" brand name can be smaller, perhaps in a corner.
+        3. The "Dallenge" brand name can be smaller, perhaps in a corner.
         4. The overall image should be a square (1:1 aspect ratio) and feel like a cool, shareable Instagram post.
         
         Make it look exciting and something a user would be proud to share.`,

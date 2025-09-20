@@ -123,7 +123,7 @@ export default function UserProfilePage() {
         form.reset({
             displayName: user.displayName ?? '',
             phone: user.phone ?? '', 
-            bio: user.bio ?? 'Lover of technology, wellness, and continuous learning. Excited to be on the DAWION platform!',
+            bio: user.bio ?? 'Lover of technology, wellness, and continuous learning. Excited to be on the Dallenge platform!',
             dob: user.dob ? new Date(user.dob) : (user.creationTime ? new Date(user.creationTime) : undefined),
         });
     }

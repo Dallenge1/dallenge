@@ -10,7 +10,7 @@ import { useAuth } from '../providers/auth-provider';
 export default function AppHeader() {
   const pathname = usePathname();
   const { user } = useAuth();
-  let currentPageLabel = 'DAWION';
+  let currentPageLabel = 'Dallenge';
 
   const activeLink = NAV_LINKS.find(link => {
     const href = link.isProfile ? (user ? `/users/${user.uid}` : '/login') : link.href;

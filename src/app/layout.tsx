@@ -6,8 +6,8 @@ import { ThemeScript } from '@/components/theme-script';
 import { AuthProvider } from '@/components/providers/auth-provider';
 
 export const metadata: Metadata = {
-  title: 'DAWION',
-  description: 'DAWION - Your All-in-One Educational and Wellness Platform',
+  title: 'Dallenge',
+  description: 'Dallenge - Your All-in-One Educational and Wellness Platform',
 };
 
 export default function RootLayout({

@@ -85,7 +85,7 @@ export default function ChallengeLeaderboard({ replies, challengeEnded }: Challe
           </div>
            <DialogFooter>
             {generatedImage && (
-              <a href={generatedImage} download={`dawion-challenge-winner.png`}>
+              <a href={generatedImage} download={`dallenge-challenge-winner.png`}>
                 <Button>
                   <Download className="mr-2 h-4 w-4" />
                   Download

@@ -22,20 +22,24 @@ export default function AllUsersPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(collection(db, 'users'), orderBy('displayName', 'asc'));
+    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
 
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
-        const usersData: User[] = [];
+        const uniqueUsers = new Map<string, User>();
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          usersData.push({
-            id: doc.id,
-            name: data.displayName,
-            avatarUrl: data.photoURL,
-          });
+          if (data.authorId && !uniqueUsers.has(data.authorId)) {
+            uniqueUsers.set(data.authorId, {
+              id: data.authorId,
+              name: data.authorName,
+              avatarUrl: data.authorAvatarUrl,
+            });
+          }
         });
+        
+        const usersData = Array.from(uniqueUsers.values()).sort((a,b) => a.name.localeCompare(b.name));
         setUsers(usersData);
         setLoading(false);
       },

@@ -316,6 +316,8 @@ export default function FeedPage() {
         ?.map(replyId => posts.find(p => p.id === replyId))
         .filter((p): p is Post => p !== undefined) || [];
 
+    const leaderboardEntries = [post, ...challengeReplies];
+
 
     return (
       <Card key={post.id} id={post.id} className="w-full">
@@ -412,7 +414,7 @@ export default function FeedPage() {
            </CardContent>
         )}
         
-        {post.type === 'challenge' && challengeReplies.length > 0 && (
+        {post.type === 'challenge' && (challengeReplies.length > 0 || post.coins.length > 0) && (
           <CardContent className='p-0 border-t'>
             <Tabs defaultValue="replies" className="w-full">
               <TabsList className="grid w-full grid-cols-2 rounded-none">
@@ -435,7 +437,7 @@ export default function FeedPage() {
                   </div>
               </TabsContent>
               <TabsContent value="leaderboard" className="p-4 bg-muted/20">
-                <ChallengeLeaderboard replies={challengeReplies} />
+                <ChallengeLeaderboard replies={leaderboardEntries} />
               </TabsContent>
             </Tabs>
           </CardContent>

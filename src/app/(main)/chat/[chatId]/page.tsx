@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   collection,
   query,
@@ -11,8 +11,6 @@ import {
   Timestamp,
   doc,
   getDoc,
-  where,
-  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -41,12 +39,25 @@ type OtherUser = {
 
 export default function ChatPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const chatId = params.chatId as string;
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
+  const [otherUser, setOtherUser] = useState<OtherUser | null>(() => {
+    const displayName = searchParams.get('displayName');
+    const photoURL = searchParams.get('photoURL');
+    const otherUserId = searchParams.get('otherUserId');
+    if (displayName && photoURL && otherUserId) {
+        return {
+            id: otherUserId,
+            displayName: decodeURIComponent(displayName),
+            photoURL: decodeURIComponent(photoURL),
+        };
+    }
+    return null;
+  });
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -64,8 +75,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!chatId || !currentUser) return;
 
+    // Fetch fresh user data in the background to ensure it's up-to-date
     const fetchChatInfo = async () => {
-      setLoading(true);
+      // No need to set loading to true for the header, it's pre-filled
       try {
         const chatRef = doc(db, 'chats', chatId);
         const chatSnap = await getDoc(chatRef);
@@ -74,7 +86,7 @@ export default function ChatPage() {
           const chatData = chatSnap.data();
           const otherUserId = chatData.members.find((id: string) => id !== currentUser.uid);
           
-          if(otherUserId) {
+          if(otherUserId && (!otherUser || otherUser.id !== otherUserId)) { // Fetch only if not passed or mismatched
             const userRef = doc(db, 'users', otherUserId);
             const userSnap = await getDoc(userRef);
 
@@ -89,8 +101,8 @@ export default function ChatPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to fetch chat info:", error)
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load chat details.'});
+        console.error("Failed to fetch fresh chat info:", error)
+        // Don't toast here as it might be annoying if it fails in the background
       }
     };
 
@@ -113,7 +125,7 @@ export default function ChatPage() {
     });
 
     return () => unsubscribe();
-  }, [chatId, currentUser, toast]);
+  }, [chatId, currentUser, toast, otherUser]);
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !currentUser) return;

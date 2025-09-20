@@ -159,7 +159,14 @@ export default function ChatsPage() {
             {chats.map((chat) => chat.otherUser && (
               <li key={chat.id}>
                 <Link
-                  href={`/chat/${chat.id}`}
+                  href={{
+                    pathname: `/chat/${chat.id}`,
+                    query: {
+                      otherUserId: chat.otherUser.id,
+                      displayName: encodeURIComponent(chat.otherUser.displayName),
+                      photoURL: encodeURIComponent(chat.otherUser.photoURL),
+                    },
+                  }}
                   className="flex items-center gap-4 p-4 transition-colors hover:bg-muted/50"
                 >
                   <Avatar className="h-12 w-12">

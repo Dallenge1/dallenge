@@ -321,7 +321,14 @@ export default function FeedPage() {
     });
   };
 
-  const toggleCommentBox = (postId: string) => setActiveCommentBox(activeCommentBox === postId ? null : postId);
+  const toggleCommentBox = (postId: string) => {
+    if (activeCommentBox === postId) {
+      setActiveCommentBox(null);
+    } else {
+      setCommentContent('');
+      setActiveCommentBox(postId);
+    }
+  };
 
   const handleAcceptChallenge = (postId: string) => {
     if (!user) return;
@@ -526,7 +533,13 @@ export default function FeedPage() {
                             onDelete={handleDeletePost} 
                             onAddCoin={handleAddCoin} 
                             onShare={handleShare} 
-                            isPending={isPending} 
+                            isPending={isPending}
+                            onComment={() => toggleCommentBox(reply.id)}
+                            isCommentBoxOpen={activeCommentBox === reply.id}
+                            commentContent={activeCommentBox === reply.id ? commentContent : ''}
+                            onCommentContentChange={(text) => activeCommentBox === reply.id && setCommentContent(text)}
+                            onCommentSubmit={() => handleCommentSubmit(reply.id)}
+                            allComments={reply.comments}
                         />
                     ))}
                   </div>

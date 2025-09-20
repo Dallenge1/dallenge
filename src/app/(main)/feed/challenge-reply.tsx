@@ -16,6 +16,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import { Coins, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import Comment from './comment';
+
+
+type CommentData = {
+  authorName: string;
+  authorAvatarUrl: string;
+  content: string;
+  timestamp: Timestamp;
+};
 
 type Post = {
   id: string;
@@ -27,7 +37,7 @@ type Post = {
   imageUrl?: string;
   videoUrl?: string;
   coins?: string[];
-  comments?: any[];
+  comments: CommentData[];
 };
 
 type ChallengeReplyProps = {
@@ -37,9 +47,28 @@ type ChallengeReplyProps = {
   onAddCoin: (postId: string) => void;
   onShare: (postId: string) => void;
   isPending: boolean;
+  onComment: () => void;
+  isCommentBoxOpen: boolean;
+  commentContent: string;
+  onCommentContentChange: (text: string) => void;
+  onCommentSubmit: () => void;
+  allComments: CommentData[];
 };
 
-export default function ChallengeReply({ postId, currentUser, onDelete, onAddCoin, onShare, isPending }: ChallengeReplyProps) {
+export default function ChallengeReply({ 
+    postId, 
+    currentUser, 
+    onDelete, 
+    onAddCoin, 
+    onShare, 
+    isPending,
+    onComment,
+    isCommentBoxOpen,
+    commentContent,
+    onCommentContentChange,
+    onCommentSubmit,
+    allComments
+}: ChallengeReplyProps) {
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -49,7 +78,7 @@ export default function ChallengeReply({ postId, currentUser, onDelete, onAddCoi
       const unsubscribe = onSnapshot(postRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setPost({ id: docSnap.id, ...data } as Post);
+          setPost({ id: docSnap.id, ...data, comments: data.comments || [] } as Post);
         }
         setIsLoading(false);
       }, () => {
@@ -90,6 +119,7 @@ export default function ChallengeReply({ postId, currentUser, onDelete, onAddCoi
 
   const isAuthor = currentUser?.uid === post.authorId;
   const hasGivenCoin = currentUser ? post.coins?.includes(currentUser.uid) : false;
+  const comments = allComments || post.comments;
 
   return (
     <Card className="bg-background/50">
@@ -145,9 +175,41 @@ export default function ChallengeReply({ postId, currentUser, onDelete, onAddCoi
               <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-amber-500')} />
               Coin ({post.coins?.length ?? 0})
             </Button>
-            <Button variant="ghost" className="flex-1" disabled><MessageCircle className="mr-2 h-4 w-4" />Comment ({post.comments?.length ?? 0})</Button>
+            <Button variant="ghost" className="flex-1" onClick={onComment} disabled={!currentUser}>
+                <MessageCircle className="mr-2 h-4 w-4" />Comment ({comments?.length ?? 0})
+            </Button>
             <Button variant="ghost" className="flex-1" onClick={() => onShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>
       </CardFooter>
+      {isCommentBoxOpen && (
+        <CardContent className="p-4 border-t">
+          <div className="flex gap-4">
+            <Avatar>
+              <AvatarImage src={currentUser?.photoURL ?? undefined} alt="Your avatar" />
+              <AvatarFallback>{currentUser?.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="w-full space-y-2">
+              <Textarea
+                placeholder="Write a comment..."
+                value={commentContent}
+                onChange={(e) => onCommentContentChange(e.target.value)}
+                disabled={isPending}
+              />
+              <div className="flex justify-end">
+                <Button onClick={onCommentSubmit} disabled={isPending || !commentContent.trim()}>
+                  {isPending ? 'Commenting...' : 'Comment'}
+                </Button>
+              </div>
+            </div>
+          </div>
+          {comments.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (
+                <Comment key={index} comment={comment} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }

@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation';
 import { NAV_LINKS } from '@/lib/placeholder-data';
 import { SidebarTrigger } from '../ui/sidebar';
-import { ThemeToggle } from '../theme-toggle';
 import UserNav from './user-nav';
 import { useAuth } from '../providers/auth-provider';
 
@@ -33,7 +32,6 @@ export default function AppHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        <ThemeToggle />
         <UserNav />
       </div>
     </header>

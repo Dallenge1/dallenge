@@ -1,11 +1,9 @@
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { BrainCircuit, PlayCircle, Star, Users } from 'lucide-react';
 import { NAV_LINKS } from '@/lib/placeholder-data';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LandingPage() {
   const featureLinks = NAV_LINKS.filter(
@@ -27,7 +25,6 @@ export default function LandingPage() {
           <span className="ml-2 text-lg font-bold">Dallenge</span>
         </Link>
         <nav className="ml-auto flex gap-2 sm:gap-4 items-center">
-          <ThemeToggle />
           <Button asChild variant="ghost">
             <Link href="/login">Login</Link>
           </Button>

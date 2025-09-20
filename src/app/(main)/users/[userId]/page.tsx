@@ -215,6 +215,9 @@ export default function UserProfilePage() {
     };
   }, [userId, toast]);
   
+  const totalCoins = React.useMemo(() => {
+    return posts.reduce((acc, post) => acc + (post.coins?.length || 0), 0);
+  }, [posts]);
 
   const onProfileSubmit = (data: ProfileFormValues) => {
     startTransition(async () => {
@@ -465,7 +468,13 @@ export default function UserProfilePage() {
             />
         </div>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
+            <div className='flex items-center gap-4'>
+                <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
+                <div className="flex items-center gap-2 text-lg font-mono text-amber-500">
+                    <Coins className="h-6 w-6" />
+                    <span className="font-semibold">{totalCoins.toLocaleString()}</span>
+                </div>
+            </div>
           <p className="text-muted-foreground">
              {isCurrentUserProfile ? user.email : `Viewing ${user.displayName}'s posts.`}
           </p>

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
@@ -89,6 +88,8 @@ export default function FeedPage() {
 
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  
+  const [scrolledToPost, setScrolledToPost] = useState(false);
 
 
   useEffect(() => {
@@ -131,6 +132,27 @@ export default function FeedPage() {
 
     return () => unsubscribe();
   }, [toast]);
+  
+  useEffect(() => {
+    if (!loading && posts.length > 0 && !scrolledToPost) {
+      const hash = window.location.hash;
+      if (hash) {
+        const postId = hash.substring(1);
+        const postElement = document.getElementById(postId);
+        if (postElement) {
+          setTimeout(() => {
+            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a temporary highlight effect
+            postElement.classList.add('bg-accent/20', 'transition-all', 'duration-1000');
+            setTimeout(() => {
+                 postElement.classList.remove('bg-accent/20');
+            }, 2000)
+          }, 100);
+          setScrolledToPost(true);
+        }
+      }
+    }
+  }, [loading, posts, scrolledToPost]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, postId?: string) => {
     if (e.target.files && e.target.files[0]) {
@@ -671,3 +693,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    

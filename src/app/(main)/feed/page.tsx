@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins } from 'lucide-react';
+import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins, Video } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { createPost, likePost, addComment, acceptChallenge, replyToChallenge, deletePost, addCoin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +51,7 @@ type Post = {
   likes: string[];
   comments: CommentData[];
   imageUrl?: string;
+  videoUrl?: string;
   type: 'post' | 'challenge';
   challengeAcceptedBy?: string[];
   challengeReplies?: string[];
@@ -71,7 +72,12 @@ export default function FeedPage() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const [isChallenge, setIsChallenge] = useState(false);
   const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null}}>({});
   const replyImageInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +102,7 @@ export default function FeedPage() {
           likes: data.likes || [],
           comments: data.comments || [],
           imageUrl: data.imageUrl,
+          videoUrl: data.videoUrl,
           type: data.type || 'post',
           challengeAcceptedBy: data.challengeAcceptedBy || [],
           challengeReplies: data.challengeReplies || [],
@@ -127,6 +134,7 @@ export default function FeedPage() {
         if (postId) {
           setReplyStates(prev => ({...prev, [postId]: {...(prev[postId] || {content: '', imageFile: null, imagePreview: null}), imageFile: file, imagePreview: reader.result as string}}));
         } else {
+          clearMedia(undefined, true);
           setImageFile(file);
           setImagePreview(reader.result as string);
         }
@@ -134,49 +142,77 @@ export default function FeedPage() {
       reader.readAsDataURL(file);
     }
   };
+  
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        clearMedia(true);
+        setVideoFile(file);
+        setVideoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  const clearImage = (postId?: string) => {
-    if (postId) {
+  const clearMedia = (clearImage: boolean = true, clearVideo: boolean = true, postId?: string) => {
+    if(postId){
+      // only for replies which currently only support images
       setReplyStates(prev => ({...prev, [postId]: {...(prev[postId] || {content: '', imageFile: null, imagePreview: null}), imageFile: null, imagePreview: null}}));
       if(replyImageInputRef.current) replyImageInputRef.current.value = '';
     } else {
-      setImageFile(null);
-      setImagePreview(null);
-      if(imageInputRef.current) imageInputRef.current.value = '';
+      if(clearImage){
+        setImageFile(null);
+        setImagePreview(null);
+        if(imageInputRef.current) imageInputRef.current.value = '';
+      }
+      if(clearVideo){
+        setVideoFile(null);
+        setVideoPreview(null);
+        if(videoInputRef.current) videoInputRef.current.value = '';
+      }
     }
   }
 
-  const uploadImage = async (file: File): Promise<string | null> => {
+  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload an image.'});
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload a file.'});
         return null;
     }
 
     try {
-        const fileRef = ref(storage, `posts/${user.uid}/${Date.now()}-${file.name}`);
+        const fileRef = ref(storage, `${folder}/${user.uid}/${Date.now()}-${file.name}`);
         const snapshot = await uploadBytes(fileRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         return downloadURL;
     } catch (error) {
-        console.error("Error uploading image to Firebase Storage:", error);
+        console.error(`Error uploading to Firebase Storage in folder ${folder}:`, error);
         toast({
             variant: 'destructive',
-            title: 'Image Upload Error',
-            description: 'Could not upload image.',
+            title: 'Upload Error',
+            description: `Could not upload file.`,
         });
         return null;
     }
   }
 
   const handlePost = () => {
-    if (!content.trim() && !imageFile) return;
+    if (!content.trim() && !imageFile && !videoFile) return;
     if (!user) return;
 
     startTransition(async () => {
       let imageUrl: string | null = null;
+      let videoUrl: string | null = null;
+      
       if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
+        imageUrl = await uploadFile(imageFile, 'posts');
         if (!imageUrl) return;
+      }
+      
+      if (videoFile) {
+        videoUrl = await uploadFile(videoFile, 'videos');
+        if (!videoUrl) return;
       }
       
       try {
@@ -186,10 +222,11 @@ export default function FeedPage() {
           user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
           content,
           imageUrl,
+          videoUrl,
           isChallenge ? 'challenge' : 'post'
         );
         setContent('');
-        clearImage();
+        clearMedia();
         setIsChallenge(false);
         toast({
           title: 'Success',
@@ -260,7 +297,7 @@ export default function FeedPage() {
     startTransition(async () => {
       let imageUrl: string | null = null;
       if (replyImageFile) {
-        imageUrl = await uploadImage(replyImageFile);
+        imageUrl = await uploadFile(replyImageFile, 'posts');
         if (!imageUrl) return;
       }
       try {
@@ -358,6 +395,7 @@ export default function FeedPage() {
         <CardContent className="space-y-4">
           {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
+          {post.videoUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><video src={post.videoUrl} controls className="w-full h-full object-cover" /></div>)}
         </CardContent>
         <CardFooter className="flex justify-between border-t p-2">
            {post.type === 'challenge' || post.isChallengeReply ? (
@@ -400,7 +438,7 @@ export default function FeedPage() {
                   <Textarea placeholder="Post your reply to the challenge..." value={replyState.content} onChange={(e) => setReplyStates(prev => ({...prev, [post.id]: {...replyState, content: e.target.value}}))} disabled={isPending}/>
                   {replyState.imagePreview && (
                       <div className="relative"><Image src={replyState.imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" />
-                          <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearImage(post.id)} disabled={isPending}><X className="h-4 w-4" /></Button>
+                          <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(true, true, post.id)} disabled={isPending}><X className="h-4 w-4" /></Button>
                       </div>
                   )}
                   <div className="flex justify-between items-center">
@@ -477,15 +515,18 @@ export default function FeedPage() {
           <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
           <div className="w-full space-y-2">
             <Textarea placeholder={isChallenge ? "Describe your challenge..." : "What's on your mind?"} value={content} onChange={(e) => setContent(e.target.value)} disabled={isPending || !user}/>
-            {imagePreview && (<div className="relative"><Image src={imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearImage()} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
+            {imagePreview && (<div className="relative"><Image src={imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(true, false)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
+            {videoPreview && (<div className="relative"><video src={videoPreview} controls className="rounded-lg max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(false, true)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
             <div className="flex justify-between items-center gap-2">
               <div className="flex items-center space-x-2">
                 <Switch id="challenge-mode" checked={isChallenge} onCheckedChange={setIsChallenge} disabled={isPending || !user}/><Label htmlFor="challenge-mode" className={cn(isChallenge && "text-amber-500 font-semibold")}>Challenge</Label>
               </div>
               <div className='flex items-center gap-2'>
                 <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" disabled={isPending}/>
+                <input type="file" ref={videoInputRef} onChange={handleVideoSelect} accept="video/*" className="hidden" disabled={isPending}/>
                 <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user}><ImageIcon className="h-5 w-5" /></Button>
-                <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile) || !user}>{isPending ? <Loader2 className="animate-spin"/> : (isChallenge ? 'Post Challenge' : 'Post')}</Button>
+                <Button variant="outline" size="icon" onClick={() => videoInputRef.current?.click()} disabled={isPending || !user}><Video className="h-5 w-5" /></Button>
+                <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile && !videoFile) || !user}>{isPending ? <Loader2 className="animate-spin"/> : (isChallenge ? 'Post Challenge' : 'Post')}</Button>
               </div>
             </div>
           </div>

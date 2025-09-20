@@ -25,6 +25,7 @@ export async function createPost(
   authorAvatarUrl: string,
   content: string,
   imageUrl: string | null,
+  videoUrl: string | null,
   postType: 'post' | 'challenge' = 'post'
 ) {
   try {
@@ -35,6 +36,7 @@ export async function createPost(
       authorAvatarUrl,
       content,
       imageUrl: imageUrl || null,
+      videoUrl: videoUrl || null,
       timestamp: serverTimestamp(),
       likes: [],
       comments: [],

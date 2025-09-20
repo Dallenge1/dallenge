@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import ChallengeReply from './challenge-reply';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import ChallengeLeaderboard from './challenge-leaderboard';
 
 
 type CommentData = {
@@ -310,6 +311,11 @@ export default function FeedPage() {
     const hasAcceptedChallenge = user && post.type === 'challenge' ? post.challengeAcceptedBy?.includes(user.uid) : false;
     const replyState = replyStates[post.id] || {content: '', imageFile: null, imagePreview: null};
     const isAuthor = user?.uid === post.authorId;
+    
+    const challengeReplies = post.challengeReplies
+        ?.map(replyId => posts.find(p => p.id === replyId))
+        .filter((p): p is Post => p !== undefined) || [];
+
 
     return (
       <Card key={post.id} id={post.id} className="w-full">
@@ -406,25 +412,32 @@ export default function FeedPage() {
            </CardContent>
         )}
         
-        {post.type === 'challenge' && post.challengeReplies && post.challengeReplies.length > 0 && (
-          <CardContent className='p-4 border-t'>
-            <h4 className='text-sm font-semibold mb-4'>Challenge Replies ({post.challengeReplies.length})</h4>
-            <div className='space-y-4'>
-              {post.challengeReplies.map(replyId => {
-                const replyPost = posts.find(p => p.id === replyId);
-                return <ChallengeReply 
-                  key={replyId} 
-                  postId={replyId} 
-                  post={replyPost} 
-                  isLoading={!replyPost}
-                  currentUser={user} 
-                  onDelete={handleDeletePost} 
-                  onAddCoin={handleAddCoin} 
-                  onShare={handleShare} 
-                  isPending={isPending} 
-                />;
-              })}
-            </div>
+        {post.type === 'challenge' && challengeReplies.length > 0 && (
+          <CardContent className='p-0 border-t'>
+            <Tabs defaultValue="replies" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 rounded-none">
+                <TabsTrigger value="replies">Replies ({challengeReplies.length})</TabsTrigger>
+                <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+              </TabsList>
+              <TabsContent value="replies" className="p-4 bg-muted/20">
+                  <div className='space-y-4'>
+                    {challengeReplies.map(reply => (
+                        <ChallengeReply 
+                            key={reply.id} 
+                            postId={reply.id} 
+                            currentUser={user} 
+                            onDelete={handleDeletePost} 
+                            onAddCoin={handleAddCoin} 
+                            onShare={handleShare} 
+                            isPending={isPending} 
+                        />
+                    ))}
+                  </div>
+              </TabsContent>
+              <TabsContent value="leaderboard" className="p-4 bg-muted/20">
+                <ChallengeLeaderboard replies={challengeReplies} />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         )}
       </Card>

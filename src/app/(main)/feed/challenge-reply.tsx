@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,8 +31,6 @@ type Post = {
 
 type ChallengeReplyProps = {
   postId: string;
-  post?: Post;
-  isLoading?: boolean;
   currentUser: User | null;
   onDelete: (postId: string) => void;
   onAddCoin: (postId: string) => void;
@@ -40,9 +38,9 @@ type ChallengeReplyProps = {
   isPending: boolean;
 };
 
-export default function ChallengeReply({ postId, post: initialPost, isLoading: initialLoading = false, currentUser, onDelete, onAddCoin, onShare, isPending }: ChallengeReplyProps) {
-  const [post, setPost] = useState<Post | null>(initialPost || null);
-  const [isLoading, setIsLoading] = useState(initialLoading || !initialPost);
+export default function ChallengeReply({ postId, currentUser, onDelete, onAddCoin, onShare, isPending }: ChallengeReplyProps) {
+  const [post, setPost] = useState<Post | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (postId) {
@@ -53,21 +51,12 @@ export default function ChallengeReply({ postId, post: initialPost, isLoading: i
           setPost({ id: docSnap.id, ...data } as Post);
         }
         setIsLoading(false);
-      });
-      // Fallback for initial load if no snapshot comes through immediately
-      if (!initialPost) {
-        getDoc(postRef).then(docSnap => {
-           if (docSnap.exists()) {
-             setPost({ id: docSnap.id, ...docSnap.data() } as Post);
-           }
-           setIsLoading(false);
-        });
-      } else {
+      }, () => {
         setIsLoading(false);
-      }
+      });
       return () => unsubscribe();
     }
-  }, [postId, initialPost]);
+  }, [postId]);
 
   if (isLoading) {
     return (

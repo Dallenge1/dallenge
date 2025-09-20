@@ -5,12 +5,18 @@ import { NAV_LINKS } from '@/lib/placeholder-data';
 import { SidebarTrigger } from '../ui/sidebar';
 import { ThemeToggle } from '../theme-toggle';
 import UserNav from './user-nav';
+import { useAuth } from '../providers/auth-provider';
 
 export default function AppHeader() {
   const pathname = usePathname();
+  const { user } = useAuth();
   let currentPageLabel = 'DAWION';
 
-  const activeLink = NAV_LINKS.find(link => pathname.startsWith(link.href) && link.href !== '/dashboard');
+  const activeLink = NAV_LINKS.find(link => {
+    const href = link.isProfile ? (user ? `/users/${user.uid}` : '/login') : link.href;
+    return pathname.startsWith(href) && href !== '/dashboard';
+  });
+
   if (pathname === '/dashboard') {
     currentPageLabel = 'Dashboard';
   } else if (activeLink) {

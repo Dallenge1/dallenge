@@ -16,8 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, Share2, Coins, Trophy, Edit } from 'lucide-react';
+import { formatDistanceToNow, format } from 'date-fns';
+import { Heart, MessageCircle, Share2, Coins, Trophy, Edit, CalendarIcon, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
 import { likePost, addCoin } from '@/app/actions';
@@ -25,12 +25,28 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { getOrCreateChat } from '@/app/chat-actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CardDescription, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import React from 'react';
+import { Area } from 'react-easy-crop';
+import ImageCropDialog from '@/app/(main)/profile/image-crop-dialog';
+import { getCroppedImg } from '@/app/(main)/profile/crop-image';
+import { Label } from '@/components/ui/label';
 
 
 type UserData = {
   displayName: string;
   photoURL: string;
   email: string;
+  creationTime?: string;
 };
 
 type CommentData = {
@@ -52,14 +68,25 @@ type Post = {
   type: 'post' | 'challenge';
   isChallengeReply?: boolean;
   coins?: string[];
+  imageUrl?: string;
 };
+
+const profileFormSchema = z.object({
+  displayName: z.string().min(1, 'Display name is required.'),
+  phone: z.string().optional(),
+  dob: z.date().optional(),
+  bio: z.string().max(200, "Bio can't be longer than 200 characters.").optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
 
 export default function UserProfilePage() {
   const params = useParams();
   const userId = params.userId as string;
   const router = useRouter();
 
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, updateUserPhoto, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -68,6 +95,33 @@ export default function UserProfilePage() {
   const [isPending, startTransition] = useTransition();
 
   const isCurrentUserProfile = currentUser?.uid === userId;
+  
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+  });
+
+  useEffect(() => {
+    if (user) {
+        form.reset({
+            displayName: user.displayName ?? '',
+            // This is a placeholder, in a real app you'd fetch this from a secure user profile document
+            phone: '', 
+            bio: 'Lover of technology, wellness, and continuous learning. Excited to be on the DAWION platform!',
+            dob: user.creationTime ? new Date(user.creationTime) : undefined,
+        });
+    }
+  }, [user, form]);
+  
+  const { watch } = form;
+  const bioValue = watch('bio');
+  const dobValue = watch('dob');
 
   useEffect(() => {
     if (!userId) return;
@@ -83,14 +137,23 @@ export default function UserProfilePage() {
       const postsData: Post[] = [];
       let userData: UserData | null = null;
       
+      if(querySnapshot.empty && currentUser && userId === currentUser.uid) {
+         userData = {
+            displayName: currentUser.displayName || 'New User',
+            photoURL: currentUser.photoURL || '',
+            email: currentUser.email || '',
+            creationTime: currentUser.metadata.creationTime,
+         }
+      }
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // If we haven't set the user data yet, get it from the first post
         if (!userData) {
           userData = {
             displayName: data.authorName,
             photoURL: data.authorAvatarUrl,
-            email: 'Not available' // Email is private
+            email: 'Not available', // Email is private, unless it's the current user
+            creationTime: currentUser?.metadata.creationTime,
           };
         }
         postsData.push({
@@ -105,6 +168,7 @@ export default function UserProfilePage() {
           type: data.type || 'post',
           isChallengeReply: data.isChallengeReply || false,
           coins: data.coins || [],
+          imageUrl: data.imageUrl,
         });
       });
       
@@ -122,7 +186,68 @@ export default function UserProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [userId, toast]);
+  }, [userId, toast, currentUser]);
+
+  const onProfileSubmit = (data: ProfileFormValues) => {
+    console.log(data);
+    // Here you would typically call an action to update user profile data in Firestore
+    toast({
+      title: 'Profile Updated',
+      description: 'Your personal information has been updated.',
+    });
+  };
+  
+  const handleAvatarClick = () => {
+    if (!isCurrentUserProfile) return;
+    fileInputRef.current?.click();
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result as string);
+      });
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const onCloseCrop = () => {
+    setImageSrc(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
+
+  const onCroppedAreaChange = (croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleSaveCrop = async () => {
+    if (!imageSrc || !croppedAreaPixels) return;
+
+    setIsUploading(true);
+    try {
+        const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+        await updateUserPhoto(croppedImageBlob);
+        toast({
+            title: 'Success',
+            description: 'Profile picture updated successfully!',
+        });
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+    } finally {
+        setIsUploading(false);
+        onCloseCrop();
+    }
+  };
+
+  const isLoading = authLoading || isUploading;
   
 
   const handleLike = (postId: string) => {
@@ -233,6 +358,7 @@ export default function UserProfilePage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><img src={post.imageUrl} alt="Post image" className="object-cover w-full h-full" /></div>)}
         </CardContent>
         <CardFooter className="flex justify-between border-t p-2">
            {post.type === 'challenge' || post.isChallengeReply ? (
@@ -262,31 +388,231 @@ export default function UserProfilePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+        {imageSrc && (
+            <ImageCropDialog
+            imageSrc={imageSrc}
+            crop={crop}
+            zoom={zoom}
+            setCrop={setCrop}
+            setZoom={setZoom}
+            onCroppedAreaChange={onCroppedAreaChange}
+            onClose={onCloseCrop}
+            onSave={handleSaveCrop}
+            isLoading={isUploading}
+            />
+        )}
       <header className="flex items-start gap-4">
-        <Avatar className="h-24 w-24 border-2">
-          <AvatarImage src={user.photoURL} alt={user.displayName} />
-          <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <div className={cn("relative group", isCurrentUserProfile && "cursor-pointer")} onClick={handleAvatarClick}>
+            <Avatar className="h-24 w-24 border-2">
+                <AvatarImage src={user.photoURL} alt={user.displayName} />
+                <AvatarFallback className="text-3xl">{user.displayName?.charAt(0)}</AvatarFallback>
+            </Avatar>
+             {isCurrentUserProfile && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                     {isLoading ? (
+                        <Loader2 className="h-8 w-8 text-white animate-spin" />
+                        ) : (
+                        <Upload className="h-8 w-8 text-white" />
+                        )}
+                </div>
+            )}
+             <input
+                type="file"
+                ref={fileInputRef}
+                onChange={onFileChange}
+                className="hidden"
+                accept="image/png, image/jpeg"
+                disabled={isLoading}
+            />
+        </div>
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
           <p className="text-muted-foreground">
-             {isCurrentUserProfile ? "Your public profile and posts." : `Viewing ${user.displayName}'s posts.`}
+             {isCurrentUserProfile ? user.email : `Viewing ${user.displayName}'s posts.`}
           </p>
+           {isCurrentUserProfile && bioValue && <p className="text-sm max-w-prose mt-2">{bioValue}</p>}
+           {isCurrentUserProfile && dobValue && <p className="text-sm text-muted-foreground">Born {format(dobValue, 'MMMM d, yyyy')}</p>}
         </div>
          {currentUser && !isCurrentUserProfile && (
             <Button onClick={handleMessage} disabled={isPending}>
                 {isPending ? 'Starting chat...' : 'Message'}
             </Button>
         )}
-        {isCurrentUserProfile && (
-            <Button asChild variant="outline">
-                <Link href="/profile">
-                    <Edit className="mr-2 h-4 w-4"/>
-                    Edit Profile
-                </Link>
-            </Button>
-        )}
       </header>
+        
+        {isCurrentUserProfile && (
+             <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="item-1">
+                <AccordionTrigger>
+                    <CardHeader className="p-0">
+                        <CardTitle>Edit Profile</CardTitle>
+                        <CardDescription>
+                        Update your display name and other personal details.
+                        </CardDescription>
+                    </CardHeader>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <Card className="border-none shadow-none">
+                    <CardContent className="pt-6">
+                        <Form {...form}>
+                        <form
+                            onSubmit={form.handleSubmit(onProfileSubmit)}
+                            className="space-y-6"
+                        >
+                            <div className="grid gap-4 md:grid-cols-2">
+                            <FormField
+                                control={form.control}
+                                name="displayName"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Display Name</FormLabel>
+                                    <FormControl>
+                                    <Input placeholder="Your display name" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="phone"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Phone Number</FormLabel>
+                                    <FormControl>
+                                    <Input
+                                        type="tel"
+                                        placeholder="Your phone number"
+                                        {...field}
+                                    />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            </div>
+
+                            <FormField
+                            control={form.control}
+                            name="dob"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                <FormLabel>Date of Birth</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                        variant={'outline'}
+                                        className={cn(
+                                            'w-full pl-3 text-left font-normal',
+                                            !field.value && 'text-muted-foreground'
+                                        )}
+                                        >
+                                        {field.value ? (
+                                            format(field.value, 'PPP')
+                                        ) : (
+                                            <span>Pick a date</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        captionLayout="dropdown-buttons"
+                                        fromYear={1900}
+                                        toYear={new Date().getFullYear()}
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) =>
+                                        date > new Date() || date < new Date('1900-01-01')
+                                        }
+                                        initialFocus
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+
+                            <FormField
+                            control={form.control}
+                            name="bio"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Bio</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                    placeholder="Tell us a little bit about yourself"
+                                    className="resize-none"
+                                    {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+
+                            <Button type="submit">Save Changes</Button>
+                        </form>
+                        </Form>
+                    </CardContent>
+                    </Card>
+                </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-2">
+                <AccordionTrigger>
+                    <CardHeader className="p-0">
+                        <CardTitle>Change Password</CardTitle>
+                        <CardDescription>
+                        For your security, use a strong password.
+                        </CardDescription>
+                    </CardHeader>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <Card className="border-none shadow-none">
+                    <CardContent className="space-y-4 pt-6">
+                        <div className="space-y-2">
+                        <Label htmlFor="current-password">Current Password</Label>
+                        <Input id="current-password" type="password" />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input id="new-password" type="password" />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Confirm New Password</Label>
+                        <Input id="confirm-password" type="password" />
+                        </div>
+                        <Button>Change Password</Button>
+                    </CardContent>
+                    </Card>
+                </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-3" className="border-b-0">
+                <AccordionTrigger>
+                    <CardHeader className="p-0">
+                        <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                        <CardDescription>
+                        Permanently delete your account and all associated data.
+                        </CardDescription>
+                    </CardHeader>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <Card className="border-none shadow-none">
+                    <CardContent className="pt-6">
+                        <p className="mb-4 text-sm text-muted-foreground">
+                            This action cannot be undone. This will permanently delete your account, and remove your data from our servers.
+                        </p>
+                        <Button variant="destructive">Delete My Account</Button>
+                    </CardContent>
+                    </Card>
+                </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        )}
 
       {posts.length > 0 ? (
          <Tabs defaultValue="posts" className="w-full">
@@ -305,7 +631,13 @@ export default function UserProfilePage() {
           </Tabs>
       ) : (
           <div className="text-center py-10 border rounded-lg">
-              <p className="text-muted-foreground">This user hasn't posted anything yet.</p>
+              <h3 className="text-lg font-semibold">No Posts Yet</h3>
+              <p className="text-muted-foreground">{isCurrentUserProfile ? "You haven't posted anything yet. Head to the feed to get started!" : "This user hasn't posted anything yet."}</p>
+               {isCurrentUserProfile && (
+                    <Button asChild className="mt-4">
+                        <Link href="/feed">Go to Feed</Link>
+                    </Button>
+               )}
           </div>
       )}
     </div>

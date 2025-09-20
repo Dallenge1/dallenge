@@ -75,6 +75,7 @@ type Post = {
   likes: string[];
   comments: CommentData[];
   type: 'post' | 'challenge';
+  title?: string;
   isChallengeReply?: boolean;
   coins?: string[];
   imageUrl?: string;
@@ -198,6 +199,7 @@ export default function UserProfilePage() {
           likes: data.likes || [],
           comments: data.comments || [],
           type: data.type || 'post',
+          title: data.title,
           isChallengeReply: data.isChallengeReply || false,
           coins: data.coins || [],
           imageUrl: data.imageUrl,
@@ -391,6 +393,7 @@ export default function UserProfilePage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {post.title && <h3 className="font-bold">{post.title}</h3>}
           <p className="text-sm whitespace-pre-wrap">{post.content}</p>
           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
           {post.videoUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><video src={post.videoUrl} controls className="w-full h-full object-cover" /></div>)}

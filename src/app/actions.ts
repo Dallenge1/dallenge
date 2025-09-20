@@ -27,7 +27,8 @@ export async function createPost(
   imageUrl: string | null,
   videoUrl: string | null,
   postType: 'post' | 'challenge' = 'post',
-  challengeDurationHours?: number
+  challengeDurationHours?: number,
+  title?: string
 ) {
   try {
     const postData: any = {
@@ -44,6 +45,7 @@ export async function createPost(
     };
     
     if (postType === 'challenge') {
+      postData.title = title || '';
       postData.challengeAcceptedBy = [];
       postData.challengeReplies = [];
       postData.coins = [];
@@ -182,8 +184,12 @@ export async function replyToChallenge(
   }
 ) {
   try {
+    const challengePostSnap = await getDoc(doc(db, 'posts', challengePostId));
+    const challengePostData = challengePostSnap.data();
+
     const replyPostRef = await addDoc(collection(db, 'posts'), {
       ...reply,
+      title: challengePostData?.title || '',
       timestamp: serverTimestamp(),
       likes: [],
       comments: [],

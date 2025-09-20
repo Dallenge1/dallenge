@@ -34,6 +34,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import ChallengeLeaderboard from './challenge-leaderboard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCountdown } from '@/hooks/use-countdown';
+import { Input } from '@/components/ui/input';
 
 type CommentData = {
   authorName: string;
@@ -54,6 +55,7 @@ type Post = {
   imageUrl?: string;
   videoUrl?: string;
   type: 'post' | 'challenge';
+  title?: string;
   challengeAcceptedBy?: string[];
   challengeReplies?: string[];
   isChallengeReply?: boolean;
@@ -81,6 +83,7 @@ export default function FeedPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [isChallenge, setIsChallenge] = useState(false);
+  const [challengeTitle, setChallengeTitle] = useState('');
   const [challengeDuration, setChallengeDuration] = useState('8');
   const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null, videoFile: File | null, videoPreview: string | null}}>({});
   const replyImageInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +93,6 @@ export default function FeedPage() {
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState('posts');
-  const hasScrolledRef = useRef(false);
 
 
   useEffect(() => {
@@ -111,6 +113,7 @@ export default function FeedPage() {
           imageUrl: data.imageUrl,
           videoUrl: data.videoUrl,
           type: data.type || 'post',
+          title: data.title,
           challengeAcceptedBy: data.challengeAcceptedBy || [],
           challengeReplies: data.challengeReplies || [],
           isChallengeReply: data.isChallengeReply || false,
@@ -135,7 +138,7 @@ export default function FeedPage() {
   }, [toast]);
   
   useEffect(() => {
-    if (loading || posts.length === 0 || hasScrolledRef.current) {
+    if (loading || posts.length === 0) {
       return;
     }
   
@@ -145,15 +148,13 @@ export default function FeedPage() {
       const post = posts.find(p => p.id === postId);
   
       if (post) {
-        hasScrolledRef.current = true;
-        
         const isChallenge = post.type === 'challenge';
+        const needsTabSwitch = isChallenge && activeTab !== 'challenges';
         
-        if (isChallenge && activeTab !== 'challenges') {
+        if (needsTabSwitch) {
           setActiveTab('challenges');
         }
 
-        // The timeout gives React time to re-render after a potential tab switch
         setTimeout(() => {
           const element = document.getElementById(postId);
           if (element) {
@@ -162,8 +163,11 @@ export default function FeedPage() {
             setTimeout(() => {
               element.classList.remove('bg-accent/20');
             }, 2000);
+            
+            // Remove the hash from the URL without reloading the page
+            history.replaceState(null, '', ' ');
           }
-        }, isChallenge ? 150 : 0); // Add slightly more delay if we are switching tabs
+        }, needsTabSwitch ? 150 : 0);
       }
     }
   }, [loading, posts, activeTab]);
@@ -278,8 +282,19 @@ export default function FeedPage() {
   }
 
   const handlePost = () => {
-    if (!content.trim() && !imageFile && !videoFile) return;
+    const isTitleMissing = isChallenge && !challengeTitle.trim();
+    if ((!content.trim() && !imageFile && !videoFile) || isTitleMissing) {
+      if (isTitleMissing) {
+        toast({
+          variant: 'destructive',
+          title: 'Title is required',
+          description: 'Please provide a title for your challenge.',
+        });
+      }
+      return;
+    }
     if (!user) return;
+
 
     startTransition(async () => {
       let imageUrl: string | null = null;
@@ -304,9 +319,11 @@ export default function FeedPage() {
           imageUrl,
           videoUrl,
           isChallenge ? 'challenge' : 'post',
-          isChallenge ? parseInt(challengeDuration) : undefined
+          isChallenge ? parseInt(challengeDuration) : undefined,
+          isChallenge ? challengeTitle : undefined
         );
         setContent('');
+        setChallengeTitle('');
         clearMedia();
         setIsChallenge(false);
         setChallengeDuration('8');
@@ -477,7 +494,7 @@ export default function FeedPage() {
         {post.isChallengeReply && post.originalChallengeId && (
           <CardHeader className='p-2 pb-0'>
              <Link href={`#${post.originalChallengeId}`} className='text-xs text-muted-foreground hover:underline flex items-center gap-1'>
-              <Reply className='h-3 w-3'/> Replying to a challenge
+              <Reply className='h-3 w-3'/> Replying to challenge: {post.title}
             </Link>
           </CardHeader>
         )}
@@ -497,7 +514,7 @@ export default function FeedPage() {
                   <span>Challenge</span>
                 </div>
               )}
-               {isAuthor && post.type === 'post' && (
+               {isAuthor && post.type === 'post' && !post.isChallengeReply &&(
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -515,6 +532,9 @@ export default function FeedPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {post.type === 'challenge' && post.title && (
+            <h3 className="text-xl font-bold">{post.title}</h3>
+          )}
           {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
           {post.videoUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><video src={post.videoUrl} controls className="w-full h-full object-cover" /></div>)}
@@ -659,6 +679,12 @@ export default function FeedPage() {
         <CardContent className="flex gap-4 p-4">
           <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
           <div className="w-full space-y-2">
+            {isChallenge && (
+                <div className='space-y-2'>
+                    <Label htmlFor="challenge-title">Challenge Title</Label>
+                    <Input id="challenge-title" placeholder="e.g. 30-Day Push-up Challenge" value={challengeTitle} onChange={(e) => setChallengeTitle(e.target.value)} disabled={isPending || !user} />
+                </div>
+            )}
             <Textarea placeholder={isChallenge ? "Describe your challenge..." : "What's on your mind?"} value={content} onChange={(e) => setContent(e.target.value)} disabled={isPending || !user}/>
             {imagePreview && (<div className="relative"><Image src={imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(true, false)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
             {videoPreview && (<div className="relative"><video src={videoPreview} controls className="rounded-lg max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(false, true)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
@@ -688,7 +714,7 @@ export default function FeedPage() {
                 <input type="file" ref={videoInputRef} onChange={handleVideoSelect} accept="video/*" className="hidden" disabled={isPending}/>
                 <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user || !!videoFile}><ImageIcon className="h-5 w-5" /></Button>
                 <Button variant="outline" size="icon" onClick={() => videoInputRef.current?.click()} disabled={isPending || !user || !!imageFile}><Video className="h-5 w-5" /></Button>
-                <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile && !videoFile) || !user}>{isPending ? <Loader2 className="animate-spin"/> : (isChallenge ? 'Post Challenge' : 'Post')}</Button>
+                <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile && !videoFile && !isChallenge) || (isChallenge && !challengeTitle.trim()) || !user}>{isPending ? <Loader2 className="animate-spin"/> : (isChallenge ? 'Post Challenge' : 'Post')}</Button>
               </div>
             </div>
           </div>
@@ -707,4 +733,3 @@ export default function FeedPage() {
     </div>
   );
 }
-

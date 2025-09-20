@@ -209,7 +209,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Update Firestore 'users' collection
         const userDocRef = doc(db, "users", user.uid);
-        await setDoc(userDocRef, { ...profileData, displayName }, { merge: true });
+        // Ensure all data from the form is included
+        await setDoc(userDocRef, { 
+            displayName,
+            bio: profileData.bio,
+            dob: profileData.dob,
+            phone: profileData.phone
+        }, { merge: true });
         
         if(displayName !== user.displayName){
            await updateAllUserGeneratedContent(user.uid, { authorName: displayName });

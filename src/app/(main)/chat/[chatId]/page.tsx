@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { sendMessage } from '@/app/chat-actions';
+import { sendMessage, markChatAsRead } from '@/app/chat-actions';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -71,6 +71,12 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  useEffect(() => {
+      if (chatId && currentUser) {
+          markChatAsRead(chatId, currentUser.uid);
+      }
+  }, [chatId, currentUser])
 
   useEffect(() => {
     if (!chatId || !currentUser) return;

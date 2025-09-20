@@ -14,8 +14,8 @@ import {
   query,
   where,
   getDocs,
+  increment,
 } from 'firebase/firestore';
-import { revalidatePath } from 'next/cache';
 
 async function getChatId(currentUserId: string, otherUserId: string): Promise<string> {
   // Sort IDs to ensure the chat ID is always the same regardless of who starts it
@@ -32,6 +32,10 @@ async function getChatId(currentUserId: string, otherUserId: string): Promise<st
       members,
       createdAt: serverTimestamp(),
       lastMessageTimestamp: serverTimestamp(),
+      unreadCount: {
+        [currentUserId]: 0,
+        [otherUserId]: 0,
+      }
     });
   }
   
@@ -66,6 +70,10 @@ export async function getOrCreateChat(currentUserId: string, otherUserId: string
       members: members,
       createdAt: serverTimestamp(),
       lastMessageTimestamp: serverTimestamp(),
+      unreadCount: {
+        [currentUserId]: 0,
+        [otherUserId]: 0,
+      }
   });
   
   return chatId;
@@ -89,16 +97,42 @@ export async function sendMessage(
     });
 
     const chatRef = doc(db, 'chats', chatId);
-    await setDoc(chatRef, { 
-        lastMessageTimestamp: serverTimestamp(),
-        lastMessage: text,
-        lastMessageSenderId: senderId,
-    }, { merge: true });
+    const chatSnap = await getDoc(chatRef);
+    if (chatSnap.exists()) {
+        const members = chatSnap.data().members;
+        const otherUserId = members.find((id: string) => id !== senderId);
 
-    revalidatePath(`/chat/${chatId}`);
-    revalidatePath(`/chat`);
+        if (otherUserId) {
+            await setDoc(chatRef, { 
+                lastMessageTimestamp: serverTimestamp(),
+                lastMessage: text,
+                lastMessageSenderId: senderId,
+                unreadCount: {
+                    [otherUserId]: increment(1)
+                }
+            }, { merge: true });
+        }
+    }
+
   } catch (error) {
     console.error('Error sending message:', error);
     throw new Error('Failed to send message.');
   }
+}
+
+export async function markChatAsRead(chatId: string, userId: string) {
+    try {
+        const chatRef = doc(db, 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
+        if(chatSnap.exists()) {
+            await setDoc(chatRef, {
+                unreadCount: {
+                    [userId]: 0
+                }
+            }, { merge: true });
+        }
+    } catch (error) {
+        console.error('Error marking chat as read:', error);
+        // We don't throw here, as it's not critical if this fails
+    }
 }

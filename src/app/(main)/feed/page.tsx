@@ -90,6 +90,7 @@ export default function FeedPage() {
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   
   const [scrolledToPost, setScrolledToPost] = useState(false);
+  const [activeTab, setActiveTab] = useState('posts');
 
 
   useEffect(() => {
@@ -138,21 +139,37 @@ export default function FeedPage() {
       const hash = window.location.hash;
       if (hash) {
         const postId = hash.substring(1);
-        const postElement = document.getElementById(postId);
-        if (postElement) {
-          setTimeout(() => {
-            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Add a temporary highlight effect
-            postElement.classList.add('bg-accent/20', 'transition-all', 'duration-1000');
-            setTimeout(() => {
-                 postElement.classList.remove('bg-accent/20');
-            }, 2000)
-          }, 100);
-          setScrolledToPost(true);
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+            if (post.type === 'challenge') {
+                setActiveTab('challenges');
+            }
         }
       }
     }
   }, [loading, posts, scrolledToPost]);
+  
+  // This effect handles the actual scrolling AFTER the tab has been switched (if needed)
+  useEffect(() => {
+    if (scrolledToPost) return;
+
+    const hash = window.location.hash;
+    if (hash) {
+        const postId = hash.substring(1);
+        const postElement = document.getElementById(postId);
+        if (postElement) {
+          setTimeout(() => {
+            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            postElement.classList.add('bg-accent/20', 'transition-all', 'duration-1000');
+            setTimeout(() => {
+                 postElement.classList.remove('bg-accent/20');
+            }, 2000)
+          }, 100); // A small delay to ensure the element is rendered after tab switch
+          setScrolledToPost(true);
+        }
+    }
+  // We add activeTab to the dependency array, so this runs after tab state changes
+  }, [activeTab, posts, scrolledToPost]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, postId?: string) => {
     if (e.target.files && e.target.files[0]) {
@@ -681,7 +698,7 @@ export default function FeedPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="posts" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="posts">Posts</TabsTrigger><TabsTrigger value="challenges">Challenges</TabsTrigger></TabsList>
         <TabsContent value="posts" className="space-y-4 mt-4">
           {loading ? (Array.from({ length: 3 }).map((_, index) => (<Card key={index}><CardHeader><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-[150px]" /><Skeleton className="h-3 w-[100px]" /></div></div></CardHeader><CardContent><div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /></div></CardContent><CardFooter className="flex justify-between border-t p-2"><Skeleton className="h-8 w-24" /><Skeleton className="h-8 w-24" /><Skeleton className="h-8 w-24" /></CardFooter></Card>))) : (regularPosts.length > 0 ? (regularPosts.map(renderPostCard)) : (<Card className="flex flex-col items-center justify-center p-8 text-center"><CardHeader><CornerRightDown className="h-12 w-12 text-muted-foreground mx-auto" /></CardHeader><CardContent><h3 className="text-lg font-semibold">No posts yet</h3><p className="text-muted-foreground">Be the first to share something with the community!</p></CardContent></Card>))}
@@ -694,4 +711,3 @@ export default function FeedPage() {
   );
 }
 
-    

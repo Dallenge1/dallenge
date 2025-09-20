@@ -12,6 +12,8 @@ import {
   Timestamp,
   doc,
   getDoc,
+  limit,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -48,7 +50,7 @@ import Image from 'next/image';
 type UserData = {
   displayName: string;
   photoURL: string;
-  email: string;
+  email?: string;
   creationTime?: string;
   bio?: string;
   dob?: Date;
@@ -134,7 +136,7 @@ export default function UserProfilePage() {
 
     // Fetch user data from 'users' collection
     const userRef = doc(db, 'users', userId);
-    const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+    const unsubscribeUser = onSnapshot(userRef, async (docSnap) => {
         if (docSnap.exists()) {
             const userData = docSnap.data();
             setUser({
@@ -146,8 +148,25 @@ export default function UserProfilePage() {
                 dob: userData.dob?.toDate(),
                 phone: userData.phone,
             });
+            setLoading(false);
+        } else {
+            // Fallback: If user not in 'users', get info from their latest post
+            const postsQuery = query(
+                collection(db, 'posts'),
+                where('authorId', '==', userId),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+            );
+            const postsSnapshot = await getDocs(postsQuery);
+            if (!postsSnapshot.empty) {
+                const postData = postsSnapshot.docs[0].data();
+                setUser({
+                    displayName: postData.authorName,
+                    photoURL: postData.authorAvatarUrl,
+                });
+            }
+            setLoading(false);
         }
-        setLoading(false);
     }, (error) => {
         console.error("Error fetching user data:", error);
         toast({

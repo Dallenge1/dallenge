@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -45,6 +46,7 @@ import ImageCropDialog from '@/app/(main)/profile/image-crop-dialog';
 import { getCroppedImg } from '@/app/(main)/profile/crop-image';
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
+import { BASE_URL } from '@/lib/config';
 
 
 type UserData = {
@@ -296,7 +298,7 @@ export default function UserProfilePage() {
   const handleShare = async (postId: string) => {
     if (navigator.clipboard && window.isSecureContext) {
       try {
-        const postUrl = `${window.location.origin}/feed#${postId}`;
+        const postUrl = `${BASE_URL}/feed#${postId}`;
         await navigator.clipboard.writeText(postUrl);
         toast({
             title: 'Link Copied',

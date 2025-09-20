@@ -39,13 +39,13 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="w-full py-20 md:py-32 lg:py-40">
           <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-              <div className="flex flex-col justify-center space-y-4">
+            <div className="grid gap-6 text-center">
+              <div className="flex flex-col items-center justify-center space-y-4">
                 <div className="space-y-4">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
                     Unlock Your Potential with Dallenge
                   </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                  <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl">
                     Your all-in-one platform for learning, wellness, and
                     personal growth. Explore videos, challenge your mind, and
                     connect with a vibrant community.
@@ -60,14 +60,6 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
-              <Image
-                src="https://picsum.photos/seed/landing-hero/600/400"
-                width="600"
-                height="400"
-                alt="Hero"
-                className="mx-auto aspect-[3/2] overflow-hidden rounded-xl object-cover sm:w-full"
-                data-ai-hint="wellness education"
-              />
             </div>
           </div>
         </section>

@@ -509,7 +509,7 @@ export default function FeedPage() {
             </div>
             <div className='flex items-center gap-2'>
               {post.type === 'challenge' && (
-                <div className="flex items-center gap-2 text-sm font-semibold text-amber-500">
+                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Trophy className="h-5 w-5" />
                   <span>Challenge</span>
                 </div>
@@ -548,7 +548,7 @@ export default function FeedPage() {
         <CardFooter className="flex justify-between border-t p-2">
            {post.type === 'challenge' || post.isChallengeReply ? (
             <Button variant="ghost" className="flex-1" onClick={() => handleAddCoin(post.id)} disabled={isPending || !user}>
-              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-amber-500')} />
+              <Coins className={cn('mr-2 h-4 w-4', hasGivenCoin && 'text-primary')} />
               Coin ({post.coins?.length ?? 0})
             </Button>
            ) : (
@@ -559,9 +559,12 @@ export default function FeedPage() {
            )}
           <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}><MessageCircle className="mr-2 h-4 w-4" />Comment ({post.comments.length})</Button>
           {post.type === 'challenge' && user && user.uid !== post.authorId ? (
-            <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id)} disabled={isPending || hasAcceptedChallenge || challengeHasEnded}>
-              {hasAcceptedChallenge ? <><CheckCircle className="mr-2 h-4 w-4 text-green-500"/>Accepted</> : <><Trophy className="mr-2 h-4 w-4"/>Accept</>}
-            </Button>
+            <>
+              <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id)} disabled={isPending || hasAcceptedChallenge || challengeHasEnded}>
+                {hasAcceptedChallenge ? <><CheckCircle className="mr-2 h-4 w-4 text-green-500"/>Accepted</> : <><Trophy className="mr-2 h-4 w-4"/>Accept</>}
+              </Button>
+              <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>
+            </>
           ) : <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>}
         </CardFooter>
 
@@ -707,7 +710,7 @@ export default function FeedPage() {
             
             <div className="flex justify-between items-center gap-2 pt-2">
               <div className="flex items-center space-x-2">
-                <Switch id="challenge-mode" checked={isChallenge} onCheckedChange={setIsChallenge} disabled={isPending || !user}/><Label htmlFor="challenge-mode" className={cn(isChallenge && "text-amber-500 font-semibold")}>Challenge</Label>
+                <Switch id="challenge-mode" checked={isChallenge} onCheckedChange={setIsChallenge} disabled={isPending || !user}/><Label htmlFor="challenge-mode" className={cn(isChallenge && "text-primary font-semibold")}>Challenge</Label>
               </div>
               <div className='flex items-center gap-2'>
                 <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" disabled={isPending}/>

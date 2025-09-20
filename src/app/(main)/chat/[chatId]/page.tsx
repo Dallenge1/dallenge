@@ -65,33 +65,32 @@ export default function ChatPage() {
     if (!chatId || !currentUser) return;
 
     const fetchChatInfo = async () => {
-      const chatRef = doc(db, 'chats', chatId);
-      const chatSnap = await getDoc(chatRef);
+      setLoading(true);
+      try {
+        const chatRef = doc(db, 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
 
-      if (chatSnap.exists()) {
-        const chatData = chatSnap.data();
-        const otherUserId = chatData.members.find((id: string) => id !== currentUser.uid);
-        
-        // This is a simplified way to get user info. 
-        // In a real app, you'd fetch this from a 'users' collection.
-        // Here, we'll try to get it from the first post we find by that user.
-        const postsQuery = query(collection(db, 'posts'), where('authorId', '==', otherUserId));
-        const postsSnapshot = await getDocs(postsQuery);
-        if (!postsSnapshot.empty) {
-            const postData = postsSnapshot.docs[0].data();
-            setOtherUser({
-                id: otherUserId,
-                displayName: postData.authorName,
-                photoURL: postData.authorAvatarUrl,
-            });
-        } else {
-             // Fallback if the user has no posts
-             setOtherUser({
-                id: otherUserId,
-                displayName: 'User',
-                photoURL: '',
-            });
+        if (chatSnap.exists()) {
+          const chatData = chatSnap.data();
+          const otherUserId = chatData.members.find((id: string) => id !== currentUser.uid);
+          
+          if(otherUserId) {
+            const userRef = doc(db, 'users', otherUserId);
+            const userSnap = await getDoc(userRef);
+
+            if(userSnap.exists()){
+                const userData = userSnap.data();
+                 setOtherUser({
+                    id: otherUserId,
+                    displayName: userData.displayName,
+                    photoURL: userData.photoURL,
+                });
+            }
+          }
         }
+      } catch (error) {
+        console.error("Failed to fetch chat info:", error)
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load chat details.'});
       }
     };
 
@@ -137,18 +136,18 @@ export default function ChatPage() {
     <div className="flex flex-col h-full">
       <header className="flex items-center gap-4 border-b p-4">
         <Button variant="ghost" size="icon" asChild>
-            <Link href={otherUser ? `/users/${otherUser.id}`: '/feed'}>
+            <Link href={'/chat'}>
                 <ArrowLeft />
             </Link>
         </Button>
         {otherUser ? (
-          <>
+          <Link href={`/users/${otherUser.id}`} className="flex items-center gap-4 group">
             <Avatar>
               <AvatarImage src={otherUser.photoURL} alt={otherUser.displayName} />
               <AvatarFallback>{otherUser.displayName.charAt(0)}</AvatarFallback>
             </Avatar>
-            <h1 className="text-xl font-bold">{otherUser.displayName}</h1>
-          </>
+            <h1 className="text-xl font-bold group-hover:underline">{otherUser.displayName}</h1>
+          </Link>
         ) : (
             <div className="flex items-center gap-4">
                 <Skeleton className="h-10 w-10 rounded-full" />
@@ -158,7 +157,7 @@ export default function ChatPage() {
       </header>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {loading ? (
+        {loading && messages.length === 0 ? (
           <div className="space-y-4">
             <Skeleton className="h-16 w-3/4" />
             <Skeleton className="h-16 w-3/4 ml-auto" />

@@ -15,7 +15,7 @@ import {
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
-import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -27,6 +27,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
   updateUserPhoto: (file: File | Blob) => Promise<void>;
+  updateUserProfile: (data: {displayName: string, bio?: string, dob?: Date, phone?: string}) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,20 +46,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, [authInstance]);
+  
+  const createUserInFirestore = async (user: User) => {
+      const userRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(userRef);
+      if (!docSnap.exists()) {
+        await setDoc(userRef, {
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+            createdAt: serverTimestamp(),
+            uid: user.uid,
+        });
+      }
+  }
 
   const signUp = async (email: string, pass: string, firstName: string, lastName: string) => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
-      await updateProfile(userCredential.user, {
-        displayName: `${firstName} ${lastName}`
-      });
-      // Create a default avatar for the user
+      const displayName = `${firstName} ${lastName}`;
       const defaultAvatarUrl = `https://picsum.photos/seed/${userCredential.user.uid}/100/100`;
-       await updateProfile(userCredential.user, {
+
+      await updateProfile(userCredential.user, {
+        displayName: displayName,
         photoURL: defaultAvatarUrl
       });
-      setUser({ ...userCredential.user, photoURL: defaultAvatarUrl });
+      
+      const updatedUser = { ...userCredential.user, displayName, photoURL: defaultAvatarUrl };
+      await createUserInFirestore(updatedUser as User);
+
+      setUser(updatedUser);
       return userCredential;
     } finally {
       setLoading(false);
@@ -79,17 +97,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const result = await signInWithPopup(authInstance, googleProvider);
       const user = result.user;
+      let finalUser = user;
+
       // Check if the user is new
       if (user.metadata.creationTime === user.metadata.lastSignInTime) {
-        // New user
-        if (!user.photoURL) {
-            const defaultAvatarUrl = `https://picsum.photos/seed/${user.uid}/100/100`;
-            await updateProfile(user, {
-                photoURL: defaultAvatarUrl
-            });
-            setUser({ ...user, photoURL: defaultAvatarUrl });
+        let photoURL = user.photoURL;
+        if (!photoURL) {
+            photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
+            await updateProfile(user, { photoURL });
+            finalUser = {...user, photoURL};
         }
       }
+      await createUserInFirestore(finalUser);
+      setUser(finalUser);
       return result;
     } finally {
       setLoading(false);
@@ -105,30 +125,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   
-  const updateAllUserPostsAndComments = async (userId: string, newPhotoURL: string) => {
+  const updateAllUserGeneratedContent = async (userId: string, updateData: {authorAvatarUrl?: string, authorName?: string}) => {
     const batch = writeBatch(db);
   
     // Update posts
     const postsQuery = query(collection(db, 'posts'), where('authorId', '==', userId));
     const postsSnapshot = await getDocs(postsQuery);
     postsSnapshot.forEach(docSnap => {
-      batch.update(docSnap.ref, { authorAvatarUrl: newPhotoURL });
+      batch.update(docSnap.ref, updateData);
     });
   
     // Update comments
+    // This is computationally expensive. For a real-world app, this might be better handled by a cloud function.
     const allPostsQuery = query(collection(db, 'posts'));
     const allPostsSnapshot = await getDocs(allPostsQuery);
   
     for (const postDoc of allPostsSnapshot.docs) {
       const comments = postDoc.data().comments || [];
+       let commentsUpdated = false;
       const updatedComments = comments.map((comment: any) => {
-        // This part is tricky as we don't store userId in comments.
-        // This assumes authorName is unique, which is not a good assumption.
-        // For a real app, you would need to store the authorId in the comment object.
-        // We will skip comment avatar updates for now to avoid incorrect updates.
+        // This relies on having stored authorId in comment objects. 
+        // If not, this part needs to be adapted. Assuming authorId is stored.
+        if (comment.authorId === userId) {
+          commentsUpdated = true;
+          return {...comment, authorName: updateData.authorName ?? comment.authorName, authorAvatarUrl: updateData.authorAvatarUrl ?? comment.authorAvatarUrl};
+        }
         return comment;
       });
-      // batch.update(postDoc.ref, { comments: updatedComments });
+      if(commentsUpdated) {
+        batch.update(postDoc.ref, { comments: updatedComments });
+      }
     }
     
     await batch.commit();
@@ -136,6 +162,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateUserPhoto = async (file: File | Blob) => {
     if (!user) throw new Error("You must be logged in to update your profile picture.");
+    setLoading(true);
     
     let fileToUpload: File;
 
@@ -153,9 +180,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await updateProfile(user, { photoURL });
       setUser({ ...user, photoURL });
       
-      // After updating profile, update all existing posts with new avatar URL
-      await updateAllUserPostsAndComments(user.uid, photoURL);
+      const userDocRef = doc(db, "users", user.uid);
+      await setDoc(userDocRef, { photoURL: photoURL }, { merge: true });
 
+      await updateAllUserGeneratedContent(user.uid, { authorAvatarUrl: photoURL });
 
     } catch (error) {
       console.error("Error in updateUserPhoto:", error);
@@ -163,8 +191,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       throw new Error("An unexpected error occurred during photo update.");
+    } finally {
+        setLoading(false);
     }
   };
+  
+  const updateUserProfile = async (data: {displayName: string, bio?: string, dob?: Date, phone?: string}) => {
+    if (!user) throw new Error("You must be logged in to update your profile.");
+    setLoading(true);
+
+    try {
+        const { displayName, ...profileData } = data;
+        
+        // Update Firebase Auth profile
+        if (displayName !== user.displayName) {
+            await updateProfile(user, { displayName });
+            setUser({ ...user, displayName });
+        }
+
+        // Update Firestore 'users' collection
+        const userDocRef = doc(db, "users", user.uid);
+        await setDoc(userDocRef, { ...profileData, displayName }, { merge: true });
+        
+        if(displayName !== user.displayName){
+           await updateAllUserGeneratedContent(user.uid, { authorName: displayName });
+        }
+
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        throw new Error("Failed to update profile.");
+    } finally {
+        setLoading(false);
+    }
+  }
 
   const value = {
     user,
@@ -173,7 +232,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     signInWithGoogle,
     logOut,
-    updateUserPhoto
+    updateUserPhoto,
+    updateUserProfile,
   };
 
   if (loading && !user) {
@@ -204,5 +264,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

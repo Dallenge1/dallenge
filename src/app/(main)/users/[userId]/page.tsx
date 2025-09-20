@@ -10,6 +10,8 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -48,6 +50,9 @@ type UserData = {
   photoURL: string;
   email: string;
   creationTime?: string;
+  bio?: string;
+  dob?: Date;
+  phone?: string;
 };
 
 type CommentData = {
@@ -88,7 +93,7 @@ export default function UserProfilePage() {
   const userId = params.userId as string;
   const router = useRouter();
 
-  const { user: currentUser, updateUserPhoto, loading: authLoading } = useAuth();
+  const { user: currentUser, updateUserPhoto, updateUserProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -113,10 +118,9 @@ export default function UserProfilePage() {
     if (user) {
         form.reset({
             displayName: user.displayName ?? '',
-            // This is a placeholder, in a real app you'd fetch this from a secure user profile document
-            phone: '', 
-            bio: 'Lover of technology, wellness, and continuous learning. Excited to be on the DAWION platform!',
-            dob: user.creationTime ? new Date(user.creationTime) : undefined,
+            phone: user.phone ?? '', 
+            bio: user.bio ?? 'Lover of technology, wellness, and continuous learning. Excited to be on the DAWION platform!',
+            dob: user.dob ? new Date(user.dob) : (user.creationTime ? new Date(user.creationTime) : undefined),
         });
     }
   }, [user, form]);
@@ -128,44 +132,42 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (!userId) return;
 
+    // Fetch user data from 'users' collection
+    const userRef = doc(db, 'users', userId);
+    const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const userData = docSnap.data();
+            setUser({
+                displayName: userData.displayName,
+                photoURL: userData.photoURL,
+                email: userData.email,
+                creationTime: userData.creationTime,
+                bio: userData.bio,
+                dob: userData.dob?.toDate(),
+                phone: userData.phone,
+            });
+        }
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching user data:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to load user profile.',
+        });
+        setLoading(false);
+    });
+
     const q = query(
       collection(db, 'posts'),
       where('authorId', '==', userId),
       orderBy('timestamp', 'desc')
     );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
-      let userData: UserData | null = null;
-      
-      if (isCurrentUserProfile && currentUser) {
-          userData = {
-              displayName: currentUser.displayName || 'New User',
-              photoURL: currentUser.photoURL || '',
-              email: currentUser.email || '',
-              creationTime: currentUser.metadata.creationTime,
-          };
-      }
-
-      if (querySnapshot.empty && !userData && currentUser && userId === currentUser.uid) {
-         userData = {
-            displayName: currentUser.displayName || 'New User',
-            photoURL: currentUser.photoURL || '',
-            email: currentUser.email || '',
-            creationTime: currentUser.metadata.creationTime,
-         }
-      }
-
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        if (!userData) {
-          userData = {
-            displayName: data.authorName,
-            photoURL: data.authorAvatarUrl,
-            email: 'Not available',
-            creationTime: undefined, // Can't get this from post data
-          };
-        }
         postsData.push({
           id: doc.id,
           authorId: data.authorId,
@@ -182,42 +184,31 @@ export default function UserProfilePage() {
           videoUrl: data.videoUrl,
         });
       });
-      
-      setUser(userData);
       setPosts(postsData);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching user posts:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to load user profile. Check console for details.',
-        });
-        setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [userId, toast, currentUser, isCurrentUserProfile]);
+    return () => {
+        unsubscribeUser();
+        unsubscribePosts();
+    };
+  }, [userId, toast]);
   
-  useEffect(() => {
-    if (isCurrentUserProfile && currentUser && user) {
-        if (currentUser.photoURL !== user.photoURL || currentUser.displayName !== user.displayName) {
-            setUser({
-                ...user,
-                photoURL: currentUser.photoURL || '',
-                displayName: currentUser.displayName || '',
-            });
-        }
-    }
-  }, [currentUser, user, isCurrentUserProfile]);
-
 
   const onProfileSubmit = (data: ProfileFormValues) => {
-    console.log(data);
-    // Here you would typically call an action to update user profile data in Firestore
-    toast({
-      title: 'Profile Updated',
-      description: 'Your personal information has been updated.',
+    startTransition(async () => {
+      try {
+        await updateUserProfile(data);
+        toast({
+          title: 'Profile Updated',
+          description: 'Your personal information has been updated.',
+        });
+      } catch (error) {
+         toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+      }
     });
   };
   
@@ -271,8 +262,7 @@ export default function UserProfilePage() {
     }
   };
 
-  const isLoading = authLoading || isUploading;
-  
+  const isMutationPending = isPending || authLoading || isUploading;
 
   const handleLike = (postId: string) => {
     if (!currentUser) return;
@@ -331,7 +321,7 @@ export default function UserProfilePage() {
     return (
         <div className="text-center py-10">
             <h2 className="text-xl font-semibold">User not found</h2>
-            <p className="text-muted-foreground">This user may not exist or has not posted anything yet.</p>
+            <p className="text-muted-foreground">This user may not exist.</p>
             <Button asChild variant="link" className="mt-4">
                 <Link href="/feed">Return to Feed</Link>
             </Button>
@@ -409,7 +399,7 @@ export default function UserProfilePage() {
   };
 
   const regularPosts = posts.filter(p => p.type === 'post' && !p.isChallengeReply);
-  const myChallenges = posts.filter(p => p.type === 'challenge');
+  const myChallenges = posts.filter(p => p.type === 'challenge' && !p.isChallengeReply);
   const acceptedChallenges = posts.filter(p => p.isChallengeReply);
 
   return (
@@ -435,7 +425,7 @@ export default function UserProfilePage() {
             </Avatar>
              {isCurrentUserProfile && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                     {isLoading ? (
+                     {isMutationPending ? (
                         <Loader2 className="h-8 w-8 text-white animate-spin" />
                         ) : (
                         <Upload className="h-8 w-8 text-white" />
@@ -448,7 +438,7 @@ export default function UserProfilePage() {
                 onChange={onFileChange}
                 className="hidden"
                 accept="image/png, image/jpeg"
-                disabled={isLoading}
+                disabled={isMutationPending}
             />
         </div>
         <div className="flex-1">
@@ -456,8 +446,8 @@ export default function UserProfilePage() {
           <p className="text-muted-foreground">
              {isCurrentUserProfile ? user.email : `Viewing ${user.displayName}'s posts.`}
           </p>
-           {isCurrentUserProfile && bioValue && <p className="text-sm max-w-prose mt-2">{bioValue}</p>}
-           {isCurrentUserProfile && dobValue && <p className="text-sm text-muted-foreground">Born {format(dobValue, 'MMMM d, yyyy')}</p>}
+           {bioValue && <p className="text-sm max-w-prose mt-2">{bioValue}</p>}
+           {dobValue && <p className="text-sm text-muted-foreground">Born {format(dobValue, 'MMMM d, yyyy')}</p>}
         </div>
          {currentUser && !isCurrentUserProfile && (
             <Button onClick={handleMessage} disabled={isPending}>
@@ -581,7 +571,9 @@ export default function UserProfilePage() {
                             )}
                             />
 
-                            <Button type="submit">Save Changes</Button>
+                            <Button type="submit" disabled={isMutationPending}>
+                              {isPending ? 'Saving...' : 'Save Changes'}
+                            </Button>
                         </form>
                         </Form>
                     </CardContent>
@@ -690,5 +682,3 @@ export default function UserProfilePage() {
     </div>
   );
 }
-
-    

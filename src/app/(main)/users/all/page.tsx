@@ -22,23 +22,21 @@ export default function AllUsersPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
+    const q = query(collection(db, 'users'), orderBy('displayName', 'asc'));
 
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
-        const uniqueUsers = new Map<string, User>();
+        const usersData: User[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          if (data.authorId && !uniqueUsers.has(data.authorId)) {
-            uniqueUsers.set(data.authorId, {
-              id: data.authorId,
-              name: data.authorName,
-              avatarUrl: data.authorAvatarUrl,
-            });
-          }
+          usersData.push({
+            id: doc.id,
+            name: data.displayName,
+            avatarUrl: data.photoURL,
+          });
         });
-        setUsers(Array.from(uniqueUsers.values()));
+        setUsers(usersData);
         setLoading(false);
       },
       (error) => {
@@ -92,7 +90,7 @@ export default function AllUsersPage() {
       )}
        {!loading && users.length === 0 && (
           <div className="text-center py-10">
-              <p className="text-muted-foreground">No users have posted anything yet.</p>
+              <p className="text-muted-foreground">No users have signed up yet.</p>
           </div>
       )}
     </div>

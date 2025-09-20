@@ -30,6 +30,7 @@ async function getChatId(currentUserId: string, otherUserId: string): Promise<st
     // If it doesn't exist, create it
     await setDoc(chatRef, {
       members,
+      createdAt: serverTimestamp(),
       lastMessageTimestamp: serverTimestamp(),
     });
   }
@@ -64,6 +65,7 @@ export async function getOrCreateChat(currentUserId: string, otherUserId: string
   await setDoc(chatRef, {
       members: members,
       createdAt: serverTimestamp(),
+      lastMessageTimestamp: serverTimestamp(),
   });
   
   return chatId;
@@ -87,9 +89,14 @@ export async function sendMessage(
     });
 
     const chatRef = doc(db, 'chats', chatId);
-    await setDoc(chatRef, { lastMessageTimestamp: serverTimestamp() }, { merge: true });
+    await setDoc(chatRef, { 
+        lastMessageTimestamp: serverTimestamp(),
+        lastMessage: text,
+        lastMessageSenderId: senderId,
+    }, { merge: true });
 
     revalidatePath(`/chat/${chatId}`);
+    revalidatePath(`/chat`);
   } catch (error) {
     console.error('Error sending message:', error);
     throw new Error('Failed to send message.');

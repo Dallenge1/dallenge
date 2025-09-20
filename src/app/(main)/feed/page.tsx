@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
@@ -633,7 +634,7 @@ export default function FeedPage() {
                   <SelectTrigger id='duration-select' className="w-48">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {Array.from({ length: 24 }, (_, i) => i + 1).map(hour => (
                       <SelectItem key={hour} value={String(hour)}>{hour} {hour > 1 ? 'hours' : 'hour'}</SelectItem>
                     ))}

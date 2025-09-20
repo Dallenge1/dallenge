@@ -146,13 +146,30 @@ export default function FeedPage() {
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        clearMedia(true);
-        setVideoFile(file);
-        setVideoPreview(reader.result as string);
+      
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        if (video.duration > 30) {
+          toast({
+            variant: 'destructive',
+            title: 'Video Too Long',
+            description: 'Please select a video that is 30 seconds or less.',
+          });
+          if(videoInputRef.current) videoInputRef.current.value = '';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          clearMedia(true);
+          setVideoFile(file);
+          setVideoPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
       };
-      reader.readAsDataURL(file);
+      video.src = URL.createObjectURL(file);
     }
   };
 

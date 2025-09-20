@@ -15,6 +15,9 @@ import {
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
+import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 
 interface AuthContextType {
   user: User | null;
@@ -50,7 +53,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await updateProfile(userCredential.user, {
         displayName: `${firstName} ${lastName}`
       });
-      setUser(userCredential.user);
+      // Create a default avatar for the user
+      const defaultAvatarUrl = `https://picsum.photos/seed/${userCredential.user.uid}/100/100`;
+       await updateProfile(userCredential.user, {
+        photoURL: defaultAvatarUrl
+      });
+      setUser({ ...userCredential.user, photoURL: defaultAvatarUrl });
       return userCredential;
     } finally {
       setLoading(false);
@@ -66,10 +74,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = () => {
+  const signInWithGoogle = async () => {
     setLoading(true);
     try {
-      return signInWithPopup(authInstance, googleProvider);
+      const result = await signInWithPopup(authInstance, googleProvider);
+      const user = result.user;
+      // Check if the user is new
+      if (user.metadata.creationTime === user.metadata.lastSignInTime) {
+        // New user
+        if (!user.photoURL) {
+            const defaultAvatarUrl = `https://picsum.photos/seed/${user.uid}/100/100`;
+            await updateProfile(user, {
+                photoURL: defaultAvatarUrl
+            });
+            setUser({ ...user, photoURL: defaultAvatarUrl });
+        }
+      }
+      return result;
     } finally {
       setLoading(false);
     }
@@ -82,6 +103,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
         setLoading(false);
     }
+  };
+  
+  const updateAllUserPostsAndComments = async (userId: string, newPhotoURL: string) => {
+    const batch = writeBatch(db);
+  
+    // Update posts
+    const postsQuery = query(collection(db, 'posts'), where('authorId', '==', userId));
+    const postsSnapshot = await getDocs(postsQuery);
+    postsSnapshot.forEach(docSnap => {
+      batch.update(docSnap.ref, { authorAvatarUrl: newPhotoURL });
+    });
+  
+    // Update comments
+    const allPostsQuery = query(collection(db, 'posts'));
+    const allPostsSnapshot = await getDocs(allPostsQuery);
+  
+    for (const postDoc of allPostsSnapshot.docs) {
+      const comments = postDoc.data().comments || [];
+      const updatedComments = comments.map((comment: any) => {
+        // This part is tricky as we don't store userId in comments.
+        // This assumes authorName is unique, which is not a good assumption.
+        // For a real app, you would need to store the authorId in the comment object.
+        // We will skip comment avatar updates for now to avoid incorrect updates.
+        return comment;
+      });
+      // batch.update(postDoc.ref, { comments: updatedComments });
+    }
+    
+    await batch.commit();
   };
 
   const updateUserPhoto = async (file: File | Blob) => {
@@ -96,16 +146,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      // Step 1: Upload the file to Firebase Storage
       const fileRef = ref(storage, `avatars/${user.uid}/${fileToUpload.name}`);
       const snapshot = await uploadBytes(fileRef, fileToUpload);
       const photoURL = await getDownloadURL(snapshot.ref);
 
-      // Step 2: Update the user's profile in Firebase Auth
       await updateProfile(user, { photoURL });
+      setUser({ ...user, photoURL });
       
-      // Step 3: Update local user state to trigger re-render
-      setUser({ ...user, photoURL }); 
+      // After updating profile, update all existing posts with new avatar URL
+      await updateAllUserPostsAndComments(user.uid, photoURL);
+
 
     } catch (error) {
       console.error("Error in updateUserPhoto:", error);

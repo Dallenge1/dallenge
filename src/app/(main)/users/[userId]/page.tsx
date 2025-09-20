@@ -126,7 +126,6 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (!userId) return;
 
-    // Fetch user's posts
     const q = query(
       collection(db, 'posts'),
       where('authorId', '==', userId),
@@ -137,7 +136,16 @@ export default function UserProfilePage() {
       const postsData: Post[] = [];
       let userData: UserData | null = null;
       
-      if(querySnapshot.empty && currentUser && userId === currentUser.uid) {
+      if (isCurrentUserProfile && currentUser) {
+          userData = {
+              displayName: currentUser.displayName || 'New User',
+              photoURL: currentUser.photoURL || '',
+              email: currentUser.email || '',
+              creationTime: currentUser.metadata.creationTime,
+          };
+      }
+
+      if (querySnapshot.empty && !userData && currentUser && userId === currentUser.uid) {
          userData = {
             displayName: currentUser.displayName || 'New User',
             photoURL: currentUser.photoURL || '',
@@ -152,8 +160,8 @@ export default function UserProfilePage() {
           userData = {
             displayName: data.authorName,
             photoURL: data.authorAvatarUrl,
-            email: 'Not available', // Email is private, unless it's the current user
-            creationTime: currentUser?.metadata.creationTime,
+            email: 'Not available',
+            creationTime: undefined, // Can't get this from post data
           };
         }
         postsData.push({
@@ -186,7 +194,20 @@ export default function UserProfilePage() {
     });
 
     return () => unsubscribe();
-  }, [userId, toast, currentUser]);
+  }, [userId, toast, currentUser, isCurrentUserProfile]);
+  
+  useEffect(() => {
+    if (isCurrentUserProfile && currentUser && user) {
+        if (currentUser.photoURL !== user.photoURL || currentUser.displayName !== user.displayName) {
+            setUser({
+                ...user,
+                photoURL: currentUser.photoURL || '',
+                displayName: currentUser.displayName || '',
+            });
+        }
+    }
+  }, [currentUser, user, isCurrentUserProfile]);
+
 
   const onProfileSubmit = (data: ProfileFormValues) => {
     console.log(data);
@@ -643,3 +664,5 @@ export default function UserProfilePage() {
     </div>
   );
 }
+
+    

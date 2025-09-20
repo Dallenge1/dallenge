@@ -2,8 +2,22 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
+import { auth } from 'firebase-admin';
+import { getAuth } from 'firebase/auth';
+
+async function updateAllUserPosts(userId: string, newPhotoURL: string) {
+  const postsQuery = query(collection(db, 'posts'), where('authorId', '==', userId));
+  const querySnapshot = await getDocs(postsQuery);
+  const batch = writeBatch(db);
+  
+  querySnapshot.forEach(docSnap => {
+    batch.update(docSnap.ref, { authorAvatarUrl: newPhotoURL });
+  });
+  
+  await batch.commit();
+}
 
 export async function createPost(
   authorId: string,
@@ -14,6 +28,7 @@ export async function createPost(
   postType: 'post' | 'challenge' = 'post'
 ) {
   try {
+    
     await addDoc(collection(db, 'posts'), {
       authorId,
       authorName,
@@ -31,6 +46,7 @@ export async function createPost(
       }),
     });
     revalidatePath('/feed');
+    revalidatePath(`/users/${authorId}`);
   } catch (error) {
     console.error('Error creating post:', error);
     throw new Error('Failed to create post.');
@@ -45,6 +61,7 @@ export async function likePost(postId: string, userId: string) {
     if (postSnap.exists()) {
       const postData = postSnap.data();
       const likes = postData.likes || [];
+      const authorId = postData.authorId;
       if (likes.includes(userId)) {
         await updateDoc(postRef, {
           likes: arrayRemove(userId),
@@ -55,6 +72,9 @@ export async function likePost(postId: string, userId: string) {
         });
       }
       revalidatePath('/feed');
+      if (authorId) {
+        revalidatePath(`/users/${authorId}`);
+      }
     }
   } catch (error) {
     console.error('Error liking post:', error);
@@ -70,7 +90,8 @@ export async function addCoin(postId: string, userId: string) {
     if (postSnap.exists()) {
       const postData = postSnap.data();
       const coins = postData.coins || [];
-      
+      const authorId = postData.authorId;
+
       if (coins.includes(userId)) {
         // User already gave a coin, so we remove it (toggle behavior)
         await updateDoc(postRef, {
@@ -82,6 +103,9 @@ export async function addCoin(postId: string, userId: string) {
         });
       }
       revalidatePath('/feed');
+      if (authorId) {
+        revalidatePath(`/users/${authorId}`);
+      }
     }
   } catch (error) {
     console.error('Error adding coin:', error);
@@ -99,6 +123,12 @@ export async function addComment(
 ) {
   try {
     const postRef = doc(db, 'posts', postId);
+    const postSnap = await getDoc(postRef);
+    let authorId;
+    if(postSnap.exists()) {
+        authorId = postSnap.data().authorId;
+    }
+
     await updateDoc(postRef, {
       comments: arrayUnion({
         ...comment,
@@ -106,6 +136,9 @@ export async function addComment(
       }),
     });
     revalidatePath('/feed');
+    if (authorId) {
+      revalidatePath(`/users/${authorId}`);
+    }
   } catch (error) {
     console.error('Error adding comment:', error);
     throw new Error('Failed to add comment.');
@@ -153,7 +186,9 @@ export async function replyToChallenge(
     });
 
     revalidatePath('/feed');
-  } catch (error) {
+    revalidatePath(`/users/${reply.authorId}`);
+  } catch (error)
+    {
     console.error('Error replying to challenge:', error);
     throw new Error('Failed to reply to challenge.');
   }
@@ -169,3 +204,5 @@ export async function deletePost(postId: string) {
         throw new Error('Failed to delete post.');
     }
 }
+
+    

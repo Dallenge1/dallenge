@@ -89,8 +89,8 @@ export default function FeedPage() {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   
-  const [scrolledToPost, setScrolledToPost] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
+  const hasScrolledRef = useRef(false);
 
 
   useEffect(() => {
@@ -135,41 +135,38 @@ export default function FeedPage() {
   }, [toast]);
   
   useEffect(() => {
-    if (!loading && posts.length > 0 && !scrolledToPost) {
-      const hash = window.location.hash;
-      if (hash) {
-        const postId = hash.substring(1);
-        const post = posts.find(p => p.id === postId);
-        if (post) {
-            if (post.type === 'challenge') {
-                setActiveTab('challenges');
-            }
-        }
-      }
+    if (loading || posts.length === 0 || hasScrolledRef.current) {
+      return;
     }
-  }, [loading, posts, scrolledToPost]);
   
-  // This effect handles the actual scrolling AFTER the tab has been switched (if needed)
-  useEffect(() => {
-    if (scrolledToPost) return;
-
     const hash = window.location.hash;
     if (hash) {
-        const postId = hash.substring(1);
-        const postElement = document.getElementById(postId);
-        if (postElement) {
-          setTimeout(() => {
-            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            postElement.classList.add('bg-accent/20', 'transition-all', 'duration-1000');
-            setTimeout(() => {
-                 postElement.classList.remove('bg-accent/20');
-            }, 2000)
-          }, 100); // A small delay to ensure the element is rendered after tab switch
-          setScrolledToPost(true);
+      const postId = hash.substring(1);
+      const post = posts.find(p => p.id === postId);
+  
+      if (post) {
+        hasScrolledRef.current = true;
+        
+        const isChallenge = post.type === 'challenge';
+        
+        if (isChallenge && activeTab !== 'challenges') {
+          setActiveTab('challenges');
         }
+
+        // The timeout gives React time to re-render after a potential tab switch
+        setTimeout(() => {
+          const element = document.getElementById(postId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('bg-accent/20', 'transition-all', 'duration-1000');
+            setTimeout(() => {
+              element.classList.remove('bg-accent/20');
+            }, 2000);
+          }
+        }, isChallenge ? 150 : 0); // Add slightly more delay if we are switching tabs
+      }
     }
-  // We add activeTab to the dependency array, so this runs after tab state changes
-  }, [activeTab, posts, scrolledToPost]);
+  }, [loading, posts, activeTab]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, postId?: string) => {
     if (e.target.files && e.target.files[0]) {

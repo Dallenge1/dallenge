@@ -11,11 +11,12 @@ import {
   onAuthStateChanged,
   updateProfile,
   signInWithPopup,
+  getAuth,
 } from 'firebase/auth';
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -37,15 +38,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const authInstance = firebaseAuth;
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [authInstance]);
   
   const createUserInFirestore = async (user: User) => {
       const userRef = doc(db, 'users', user.uid);
@@ -57,9 +49,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             photoURL: user.photoURL,
             createdAt: serverTimestamp(),
             uid: user.uid,
-        });
+        }, { merge: true });
       }
   }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
+      if (user) {
+        await createUserInFirestore(user);
+        setUser(user);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [authInstance]);
+  
 
   const signUp = async (email: string, pass: string, firstName: string, lastName: string) => {
     setLoading(true);
@@ -83,10 +90,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signIn = (email: string, pass: string) => {
+  const signIn = async (email: string, pass: string) => {
     setLoading(true);
     try {
-        return signInWithEmailAndPassword(authInstance, email, pass);
+        const userCredential = await signInWithEmailAndPassword(authInstance, email, pass);
+        await createUserInFirestore(userCredential.user);
+        return userCredential;
     } finally {
         setLoading(false);
     }
@@ -97,19 +106,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const result = await signInWithPopup(authInstance, googleProvider);
       const user = result.user;
-      let finalUser = user;
-
-      // Check if the user is new
-      if (user.metadata.creationTime === user.metadata.lastSignInTime) {
-        let photoURL = user.photoURL;
-        if (!photoURL) {
-            photoURL = `https://picsum.photos/seed/${user.uid}/100/100`;
-            await updateProfile(user, { photoURL });
-            finalUser = {...user, photoURL};
-        }
-      }
-      await createUserInFirestore(finalUser);
-      setUser(finalUser);
+      await createUserInFirestore(user);
+      setUser(user);
       return result;
     } finally {
       setLoading(false);

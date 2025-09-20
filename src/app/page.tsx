@@ -10,9 +10,9 @@ import { ThemeToggle } from '@/components/theme-toggle';
 export default function LandingPage() {
   const featureLinks = NAV_LINKS.filter(
     (link) =>
-      link.href === '/personal-trainer' ||
-      link.href === '/games' ||
-      link.href === '/feed'
+      link.href === '/feed' ||
+      link.href === '/leaderboard' ||
+      link.href === '/profile'
   );
 
   return (

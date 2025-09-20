@@ -8,7 +8,7 @@ import { NAV_LINKS } from '@/lib/placeholder-data';
 import Link from 'next/link';
 
 export default function DashboardPage() {
-  const featureLinks = NAV_LINKS.filter((link) => link.href !== '/dashboard');
+  const featureLinks = NAV_LINKS.filter((link) => link.href !== '/dashboard' && link.href !== '/profile');
 
   return (
     <div className="flex flex-col gap-8">

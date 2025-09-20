@@ -65,48 +65,6 @@
       "description": "Avatar for Chris Lee",
       "imageUrl": "https://picsum.photos/seed/avatar11/100/100",
       "imageHint": "person casual"
-    },
-    {
-      "id": "video-thumb-1",
-      "description": "Thumbnail for Quantum Physics video",
-      "imageUrl": "https://picsum.photos/seed/quantum/400/225",
-      "imageHint": "abstract science"
-    },
-    {
-      "id": "video-thumb-2",
-      "description": "Thumbnail for Ancient Rome video",
-      "imageUrl": "https://picsum.photos/seed/rome/400/225",
-      "imageHint": "ancient architecture"
-    },
-    {
-      "id": "video-thumb-3",
-      "description": "Thumbnail for Javascript video",
-      "imageUrl": "https://picsum.photos/seed/javascript/400/225",
-      "imageHint": "code screen"
-    },
-    {
-      "id": "video-thumb-4",
-      "description": "Thumbnail for Meditation video",
-      "imageUrl": "https://picsum.photos/seed/meditation/400/225",
-      "imageHint": "serene nature"
-    },
-    {
-      "id": "game-thumb-1",
-      "description": "Thumbnail for Memory game",
-      "imageUrl": "https://picsum.photos/seed/memory/600/400",
-      "imageHint": "abstract pattern"
-    },
-    {
-      "id": "game-thumb-2",
-      "description": "Thumbnail for Pattern Recognition game",
-      "imageUrl": "https://picsum.photos/seed/pattern/600/400",
-      "imageHint": "geometric design"
-    },
-    {
-      "id": "game-thumb-3",
-      "description": "Thumbnail for Logic Puzzles",
-      "imageUrl": "https://picsum.photos/seed/logic/600/400",
-      "imageHint": "brain maze"
     }
   ]
 }

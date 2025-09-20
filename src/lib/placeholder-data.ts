@@ -5,6 +5,7 @@ import {
   Trophy,
   MessageCircle,
   Settings,
+  Star,
 } from 'lucide-react';
 
 export const NAV_LINKS = [
@@ -13,6 +14,7 @@ export const NAV_LINKS = [
   { href: '/chat', label: 'Messages', icon: MessageCircle, description: 'Chat with other users.'},
   { href: '/users/all', label: 'All Users', icon: Users, description: "Browse all users in the community."},
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, description: "See who's at the top." },
+  { href: '/feedback', label: 'Feedback', icon: Star, description: 'Share your feedback with us.' },
   { href: '/profile', label: 'Profile', icon: User, description: 'View your public profile.', isProfile: true },
   { href: '/settings', label: 'Settings', icon: Settings, description: 'Manage your account settings.'},
 ];

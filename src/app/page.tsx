@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { BrainCircuit, PlayCircle, Star, Users } from 'lucide-react';
+import { PlayCircle, Star, Users } from 'lucide-react';
 import { NAV_LINKS } from '@/lib/placeholder-data';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -21,7 +21,13 @@ export default function LandingPage() {
           className="flex items-center justify-center"
           prefetch={false}
         >
-          <BrainCircuit className="h-6 w-6 text-primary" />
+          <Image
+            src="/dallenge.jpeg"
+            alt="Dallenge Logo"
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-sm"
+          />
           <span className="ml-2 text-lg font-bold">Dallenge</span>
         </Link>
         <nav className="ml-auto flex gap-2 sm:gap-4 items-center">

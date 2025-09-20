@@ -25,6 +25,7 @@ type Post = {
   content: string;
   timestamp: Timestamp;
   imageUrl?: string;
+  videoUrl?: string;
   coins?: string[];
   comments?: any[];
 };
@@ -131,6 +132,11 @@ export default function ChallengeReply({ postId, currentUser, onDelete, onAddCoi
         {post.imageUrl && (
           <div className="relative mt-2 aspect-video overflow-hidden rounded-lg border">
             <Image src={post.imageUrl} alt="Reply image" fill className="object-cover" />
+          </div>
+        )}
+        {post.videoUrl && (
+          <div className="relative mt-2 aspect-video overflow-hidden rounded-lg border">
+            <video src={post.videoUrl} controls className="w-full h-full object-cover" />
           </div>
         )}
       </CardContent>

@@ -79,8 +79,9 @@ export default function FeedPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [isChallenge, setIsChallenge] = useState(false);
-  const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null}}>({});
+  const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null, videoFile: File | null, videoPreview: string | null}}>({});
   const replyImageInputRef = useRef<HTMLInputElement>(null);
+  const replyVideoInputRef = useRef<HTMLInputElement>(null);
 
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
@@ -132,7 +133,8 @@ export default function FeedPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (postId) {
-          setReplyStates(prev => ({...prev, [postId]: {...(prev[postId] || {content: '', imageFile: null, imagePreview: null}), imageFile: file, imagePreview: reader.result as string}}));
+          const defaultReplyState = {content: '', imageFile: null, imagePreview: null, videoFile: null, videoPreview: null};
+          setReplyStates(prev => ({...prev, [postId]: {...(prev[postId] || defaultReplyState), imageFile: file, imagePreview: reader.result as string, videoFile: null, videoPreview: null}}));
         } else {
           clearMedia(undefined, true);
           setImageFile(file);
@@ -143,7 +145,7 @@ export default function FeedPage() {
     }
   };
   
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>, postId?: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
@@ -157,15 +159,24 @@ export default function FeedPage() {
             title: 'Video Too Long',
             description: 'Please select a video that is 30 seconds or less.',
           });
-          if(videoInputRef.current) videoInputRef.current.value = '';
+          if (postId) {
+            if(replyVideoInputRef.current) replyVideoInputRef.current.value = '';
+          } else {
+            if(videoInputRef.current) videoInputRef.current.value = '';
+          }
           return;
         }
 
         const reader = new FileReader();
         reader.onloadend = () => {
-          clearMedia(true);
-          setVideoFile(file);
-          setVideoPreview(reader.result as string);
+           if (postId) {
+              const defaultReplyState = {content: '', imageFile: null, imagePreview: null, videoFile: null, videoPreview: null};
+              setReplyStates(prev => ({...prev, [postId]: {...(prev[postId] || defaultReplyState), videoFile: file, videoPreview: reader.result as string, imageFile: null, imagePreview: null}}));
+           } else {
+              clearMedia(true);
+              setVideoFile(file);
+              setVideoPreview(reader.result as string);
+           }
         };
         reader.readAsDataURL(file);
       };
@@ -175,9 +186,20 @@ export default function FeedPage() {
 
   const clearMedia = (clearImage: boolean = true, clearVideo: boolean = true, postId?: string) => {
     if(postId){
-      // only for replies which currently only support images
-      setReplyStates(prev => ({...prev, [postId]: {...(prev[postId] || {content: '', imageFile: null, imagePreview: null}), imageFile: null, imagePreview: null}}));
-      if(replyImageInputRef.current) replyImageInputRef.current.value = '';
+      const defaultReplyState = {content: '', imageFile: null, imagePreview: null, videoFile: null, videoPreview: null};
+      const currentReplyState = replyStates[postId] || defaultReplyState;
+      
+      if (clearImage) {
+        currentReplyState.imageFile = null;
+        currentReplyState.imagePreview = null;
+        if(replyImageInputRef.current) replyImageInputRef.current.value = '';
+      }
+      if (clearVideo) {
+        currentReplyState.videoFile = null;
+        currentReplyState.videoPreview = null;
+        if(replyVideoInputRef.current) replyVideoInputRef.current.value = '';
+      }
+      setReplyStates(prev => ({...prev, [postId]: currentReplyState}));
     } else {
       if(clearImage){
         setImageFile(null);
@@ -308,15 +330,22 @@ export default function FeedPage() {
 
   const handleReplyToChallenge = (postId: string) => {
     if (!user) return;
-    const { content: replyContent, imageFile: replyImageFile } = replyStates[postId] || {};
-    if (!replyContent?.trim() && !replyImageFile) return;
+    const { content: replyContent, imageFile: replyImageFile, videoFile: replyVideoFile } = replyStates[postId] || {};
+    if (!replyContent?.trim() && !replyImageFile && !replyVideoFile) return;
 
     startTransition(async () => {
       let imageUrl: string | null = null;
+      let videoUrl: string | null = null;
+
       if (replyImageFile) {
         imageUrl = await uploadFile(replyImageFile, 'posts');
         if (!imageUrl) return;
       }
+      if (replyVideoFile) {
+        videoUrl = await uploadFile(replyVideoFile, 'videos');
+        if (!videoUrl) return;
+      }
+
       try {
         await replyToChallenge(postId, {
           authorId: user.uid,
@@ -324,8 +353,9 @@ export default function FeedPage() {
           authorAvatarUrl: user.photoURL || '',
           content: replyContent,
           imageUrl,
+          videoUrl,
         });
-        setReplyStates(prev => ({...prev, [postId]: {content: '', imageFile: null, imagePreview: null}}));
+        setReplyStates(prev => ({...prev, [postId]: {content: '', imageFile: null, imagePreview: null, videoFile: null, videoPreview: null}}));
         toast({ title: 'Success!', description: 'Your challenge reply has been posted.'});
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to post reply.'});
@@ -362,7 +392,7 @@ export default function FeedPage() {
     const hasLiked = user ? post.likes.includes(user.uid) : false;
     const hasGivenCoin = user ? post.coins?.includes(user.uid) : false;
     const hasAcceptedChallenge = user && post.type === 'challenge' ? post.challengeAcceptedBy?.includes(user.uid) : false;
-    const replyState = replyStates[post.id] || {content: '', imageFile: null, imagePreview: null};
+    const replyState = replyStates[post.id] || {content: '', imageFile: null, imagePreview: null, videoFile: null, videoPreview: null};
     const isAuthor = user?.uid === post.authorId;
     
     const challengeReplies = post.challengeReplies
@@ -453,15 +483,26 @@ export default function FeedPage() {
                 <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
                 <div className="w-full space-y-2">
                   <Textarea placeholder="Post your reply to the challenge..." value={replyState.content} onChange={(e) => setReplyStates(prev => ({...prev, [post.id]: {...replyState, content: e.target.value}}))} disabled={isPending}/>
+                  
                   {replyState.imagePreview && (
                       <div className="relative"><Image src={replyState.imagePreview} alt="Image preview" width={500} height={300} className="rounded-lg object-contain max-h-80 w-auto" />
-                          <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(true, true, post.id)} disabled={isPending}><X className="h-4 w-4" /></Button>
+                          <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(true, false, post.id)} disabled={isPending}><X className="h-4 w-4" /></Button>
                       </div>
                   )}
+                  {replyState.videoPreview && (
+                      <div className="relative"><video src={replyState.videoPreview} controls className="rounded-lg max-h-80 w-auto" />
+                          <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(false, true, post.id)} disabled={isPending}><X className="h-4 w-4" /></Button>
+                      </div>
+                  )}
+
                   <div className="flex justify-between items-center">
-                    <input type="file" ref={replyImageInputRef} onChange={(e) => handleImageSelect(e, post.id)} accept="image/*" className="hidden" />
-                    <Button variant="outline" size="icon" onClick={() => replyImageInputRef.current?.click()} disabled={isPending}><ImageIcon className="h-5 w-5"/></Button>
-                    <Button onClick={() => handleReplyToChallenge(post.id)} disabled={isPending || (!replyState.content.trim() && !replyState.imageFile)}>{isPending ? 'Posting...' : 'Post Reply'}</Button>
+                    <div className="flex items-center gap-2">
+                      <input type="file" ref={replyImageInputRef} onChange={(e) => handleImageSelect(e, post.id)} accept="image/*" className="hidden" />
+                      <input type="file" ref={replyVideoInputRef} onChange={(e) => handleVideoSelect(e, post.id)} accept="video/*" className="hidden" />
+                      <Button variant="outline" size="icon" onClick={() => replyImageInputRef.current?.click()} disabled={isPending || !!replyState.videoPreview}><ImageIcon className="h-5 w-5"/></Button>
+                      <Button variant="outline" size="icon" onClick={() => replyVideoInputRef.current?.click()} disabled={isPending || !!replyState.imagePreview}><Video className="h-5 w-5"/></Button>
+                    </div>
+                    <Button onClick={() => handleReplyToChallenge(post.id)} disabled={isPending || (!replyState.content.trim() && !replyState.imageFile && !replyState.videoFile)}>{isPending ? 'Posting...' : 'Post Reply'}</Button>
                   </div>
                 </div>
               </div>
@@ -541,8 +582,8 @@ export default function FeedPage() {
               <div className='flex items-center gap-2'>
                 <input type="file" ref={imageInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" disabled={isPending}/>
                 <input type="file" ref={videoInputRef} onChange={handleVideoSelect} accept="video/*" className="hidden" disabled={isPending}/>
-                <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user}><ImageIcon className="h-5 w-5" /></Button>
-                <Button variant="outline" size="icon" onClick={() => videoInputRef.current?.click()} disabled={isPending || !user}><Video className="h-5 w-5" /></Button>
+                <Button variant="outline" size="icon" onClick={() => imageInputRef.current?.click()} disabled={isPending || !user || !!videoFile}><ImageIcon className="h-5 w-5" /></Button>
+                <Button variant="outline" size="icon" onClick={() => videoInputRef.current?.click()} disabled={isPending || !user || !!imageFile}><Video className="h-5 w-5" /></Button>
                 <Button onClick={handlePost} disabled={isPending || (!content.trim() && !imageFile && !videoFile) || !user}>{isPending ? <Loader2 className="animate-spin"/> : (isChallenge ? 'Post Challenge' : 'Post')}</Button>
               </div>
             </div>
@@ -562,5 +603,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    

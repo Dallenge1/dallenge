@@ -168,6 +168,7 @@ export async function replyToChallenge(
     authorAvatarUrl: string;
     content: string;
     imageUrl: string | null;
+    videoUrl: string | null;
   }
 ) {
   try {
@@ -206,5 +207,3 @@ export async function deletePost(postId: string) {
         throw new Error('Failed to delete post.');
     }
 }
-
-    

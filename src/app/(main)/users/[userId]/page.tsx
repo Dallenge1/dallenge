@@ -17,7 +17,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Heart, MessageCircle, Share2, Coins, Trophy, Edit, CalendarIcon, Upload, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Coins, Trophy, Edit, CalendarIcon, Upload, Loader2, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
 import { likePost, addCoin } from '@/app/actions';
@@ -40,6 +40,7 @@ import { Area } from 'react-easy-crop';
 import ImageCropDialog from '@/app/(main)/profile/image-crop-dialog';
 import { getCroppedImg } from '@/app/(main)/profile/crop-image';
 import { Label } from '@/components/ui/label';
+import Image from 'next/image';
 
 
 type UserData = {
@@ -69,6 +70,7 @@ type Post = {
   isChallengeReply?: boolean;
   coins?: string[];
   imageUrl?: string;
+  videoUrl?: string;
 };
 
 const profileFormSchema = z.object({
@@ -177,6 +179,7 @@ export default function UserProfilePage() {
           isChallengeReply: data.isChallengeReply || false,
           coins: data.coins || [],
           imageUrl: data.imageUrl,
+          videoUrl: data.videoUrl,
         });
       });
       
@@ -374,12 +377,13 @@ export default function UserProfilePage() {
                 </p>
               </div>
             </div>
-             {post.type === 'challenge' && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
+             {post.type === 'challenge' && !post.isChallengeReply && (<div className="flex items-center gap-2 text-sm font-semibold text-amber-500"><Trophy className="h-5 w-5" /><span>Challenge</span></div>)}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-           {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><img src={post.imageUrl} alt="Post image" className="object-cover w-full h-full" /></div>)}
+          {post.imageUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><Image src={post.imageUrl} alt="Post image" fill className="object-cover" /></div>)}
+          {post.videoUrl && (<div className="relative mt-2 aspect-video overflow-hidden rounded-lg border"><video src={post.videoUrl} controls className="w-full h-full object-cover" /></div>)}
         </CardContent>
         <CardFooter className="flex justify-between border-t p-2">
            {post.type === 'challenge' || post.isChallengeReply ? (
@@ -404,8 +408,9 @@ export default function UserProfilePage() {
     );
   };
 
-  const regularPosts = posts.filter(p => p.type === 'post');
-  const challengePosts = posts.filter(p => p.type === 'challenge');
+  const regularPosts = posts.filter(p => p.type === 'post' && !p.isChallengeReply);
+  const myChallenges = posts.filter(p => p.type === 'challenge');
+  const acceptedChallenges = posts.filter(p => p.isChallengeReply);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -639,15 +644,36 @@ export default function UserProfilePage() {
          <Tabs defaultValue="posts" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="posts">Posts ({regularPosts.length})</TabsTrigger>
-              <TabsTrigger value="challenges">Challenges ({challengePosts.length})</TabsTrigger>
+              <TabsTrigger value="challenges">Challenges</TabsTrigger>
             </TabsList>
             <TabsContent value="posts" className="space-y-4 mt-4">
-              {regularPosts.map(renderPostCard)}
-              {regularPosts.length === 0 && <p className="text-muted-foreground text-center py-4">No posts yet.</p>}
+              {regularPosts.length > 0 ? (
+                regularPosts.map(renderPostCard)
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No posts yet.</p>
+              )}
             </TabsContent>
             <TabsContent value="challenges" className="space-y-4 mt-4">
-              {challengePosts.map(renderPostCard)}
-              {challengePosts.length === 0 && <p className="text-muted-foreground text-center py-4">No challenges posted yet.</p>}
+                 <Tabs defaultValue="my-challenges" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="my-challenges">My Challenges ({myChallenges.length})</TabsTrigger>
+                        <TabsTrigger value="accepted-challenges">Accepted Challenges ({acceptedChallenges.length})</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="my-challenges" className="space-y-4 mt-4">
+                        {myChallenges.length > 0 ? (
+                            myChallenges.map(renderPostCard)
+                        ) : (
+                            <p className="text-muted-foreground text-center py-4">No challenges posted yet.</p>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="accepted-challenges" className="space-y-4 mt-4">
+                        {acceptedChallenges.length > 0 ? (
+                            acceptedChallenges.map(renderPostCard)
+                        ) : (
+                             <p className="text-muted-foreground text-center py-4">No accepted challenges yet.</p>
+                        )}
+                    </TabsContent>
+                 </Tabs>
             </TabsContent>
           </Tabs>
       ) : (

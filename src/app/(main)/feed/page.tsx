@@ -35,7 +35,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import ChallengeLeaderboard from './challenge-leaderboard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCountdown } from '@/hooks/use-countdown';
-import { BASE_URL } from '@/lib/config';
 
 type CommentData = {
   authorName: string;
@@ -306,7 +305,7 @@ export default function FeedPage() {
   };
   
   const handleShare = async (postId: string) => {
-    const postUrl = `${BASE_URL}/feed#${postId}`;
+    const postUrl = `${window.location.origin}/feed#${postId}`;
     try {
       await navigator.clipboard.writeText(postUrl);
       toast({ title: 'Link Copied', description: 'Link to post copied to clipboard.' });

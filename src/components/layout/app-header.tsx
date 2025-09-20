@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -12,14 +13,24 @@ export default function AppHeader() {
   let currentPageLabel = 'Dallenge';
 
   const activeLink = NAV_LINKS.find(link => {
-    const href = link.isProfile ? (user ? `/users/${user.uid}` : '/login') : link.href;
-    return pathname.startsWith(href) && href !== '/dashboard';
+    // Special handling for profile link
+    if (link.isProfile) {
+        // Match /users/[any_id]
+        return pathname.startsWith('/users/');
+    }
+    return pathname.startsWith(link.href) && link.href !== '/dashboard';
   });
 
   if (pathname === '/dashboard') {
     currentPageLabel = 'Dashboard';
   } else if (activeLink) {
     currentPageLabel = activeLink.label;
+     if (activeLink.isProfile && pathname !== `/users/${user?.uid}`) {
+        currentPageLabel = "User Profile";
+    }
+    if (activeLink.href === '/users/all' && pathname.startsWith('/users/') && pathname !== '/users/all') {
+         currentPageLabel = "User Profile";
+    }
   }
   
   return (

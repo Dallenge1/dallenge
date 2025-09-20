@@ -29,19 +29,11 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { getOrCreateChat } from '@/app/chat-actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CardDescription, CardTitle } from '@/components/ui/card';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import React from 'react';
 import { Area } from 'react-easy-crop';
 import ImageCropDialog from '@/app/(main)/profile/image-crop-dialog';
 import { getCroppedImg } from '@/app/(main)/profile/crop-image';
 import Image from 'next/image';
-import EditProfileModal from './edit-profile-modal';
-import ChangePasswordModal from './change-password-modal';
-import DangerZoneModal from './danger-zone-modal';
-
 
 type UserData = {
   displayName: string;
@@ -77,22 +69,12 @@ type Post = {
   videoUrl?: string;
 };
 
-const profileFormSchema = z.object({
-  displayName: z.string().min(1, 'Display name is required.'),
-  phone: z.string().optional(),
-  dob: z.date().optional(),
-  bio: z.string().max(200, "Bio can't be longer than 200 characters.").optional(),
-});
-
-export type ProfileFormValues = z.infer<typeof profileFormSchema>;
-
-
 export default function UserProfilePage() {
   const params = useParams();
   const userId = params.userId as string;
   const router = useRouter();
 
-  const { user: currentUser, updateUserPhoto, updateUserProfile, loading: authLoading } = useAuth();
+  const { user: currentUser, updateUserPhoto, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -108,27 +90,6 @@ export default function UserProfilePage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  const [modalOpen, setModalOpen] = useState< 'edit' | 'password' | 'danger' | null>(null);
-  
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-  });
-
-  useEffect(() => {
-    if (user) {
-        form.reset({
-            displayName: user.displayName ?? '',
-            phone: user.phone ?? '', 
-            bio: user.bio ?? 'Lover of technology, wellness, and continuous learning. Excited to be on the Dallenge platform!',
-            dob: user.dob ? new Date(user.dob) : (user.creationTime ? new Date(user.creationTime) : undefined),
-        });
-    }
-  }, [user, form]);
-  
-  const { watch } = form;
-  const bioValue = watch('bio');
-  const dobValue = watch('dob');
 
   useEffect(() => {
     if (!userId) return;
@@ -215,25 +176,6 @@ export default function UserProfilePage() {
   const totalCoins = React.useMemo(() => {
     return posts.reduce((acc, post) => acc + (post.coins?.length || 0), 0);
   }, [posts]);
-
-  const onProfileSubmit = (data: ProfileFormValues) => {
-    startTransition(async () => {
-      try {
-        await updateUserProfile(data);
-        toast({
-          title: 'Profile Updated',
-          description: 'Your personal information has been updated.',
-        });
-        setModalOpen(null);
-      } catch (error) {
-         toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: error instanceof Error ? error.message : 'An unknown error occurred.',
-        });
-      }
-    });
-  };
   
   const handleAvatarClick = () => {
     if (!isCurrentUserProfile) return;
@@ -476,8 +418,8 @@ export default function UserProfilePage() {
           <p className="text-muted-foreground">
              {isCurrentUserProfile ? user.email : `Viewing ${user.displayName}'s posts.`}
           </p>
-           {bioValue && <p className="text-sm max-w-prose mt-2">{bioValue}</p>}
-           {dobValue && <p className="text-sm text-muted-foreground">Born {format(dobValue, 'MMMM d, yyyy')}</p>}
+           {user.bio && <p className="text-sm max-w-prose mt-2">{user.bio}</p>}
+           {user.dob && <p className="text-sm text-muted-foreground">Born {format(new Date(user.dob), 'MMMM d, yyyy')}</p>}
         </div>
          {currentUser && !isCurrentUserProfile && (
             <Button onClick={handleMessage} disabled={isPending}>
@@ -485,57 +427,6 @@ export default function UserProfilePage() {
             </Button>
         )}
       </header>
-        
-        {isCurrentUserProfile && (
-             <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card onClick={() => setModalOpen('edit')} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <CardHeader className="flex flex-row items-center gap-4">
-                            <User className="w-8 h-8 text-primary" />
-                            <div>
-                                <CardTitle>Edit Profile</CardTitle>
-                                <CardDescription>Update your personal details.</CardDescription>
-                            </div>
-                        </CardHeader>
-                    </Card>
-                    <Card onClick={() => setModalOpen('password')} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <CardHeader className="flex flex-row items-center gap-4">
-                            <Lock className="w-8 h-8 text-primary" />
-                            <div>
-                                <CardTitle>Change Password</CardTitle>
-                                <CardDescription>Update your security.</CardDescription>
-                            </div>
-                        </CardHeader>
-                    </Card>
-                    <Card onClick={() => setModalOpen('danger')} className="cursor-pointer hover:bg-destructive/10 transition-colors group">
-                        <CardHeader className="flex flex-row items-center gap-4">
-                            <ShieldAlert className="w-8 h-8 text-destructive" />
-                            <div>
-                                <CardTitle className="text-destructive group-hover:text-destructive">Danger Zone</CardTitle>
-                                <CardDescription>Permanently delete account.</CardDescription>
-                            </div>
-                        </CardHeader>
-                    </Card>
-                </div>
-
-                <EditProfileModal
-                    isOpen={modalOpen === 'edit'}
-                    onClose={() => setModalOpen(null)}
-                    onSubmit={onProfileSubmit}
-                    isPending={isMutationPending}
-                    form={form}
-                />
-                <ChangePasswordModal
-                    isOpen={modalOpen === 'password'}
-                    onClose={() => setModalOpen(null)}
-                />
-                <DangerZoneModal
-                    isOpen={modalOpen === 'danger'}
-                    onClose={() => setModalOpen(null)}
-                />
-             </>
-        )}
-
 
       {posts.length > 0 ? (
          <Tabs defaultValue="posts" className="w-full">

@@ -88,7 +88,7 @@ export default function EditProfileModal({ isOpen, onClose, onSubmit, isPending,
                                                     )}
                                                 >
                                                     {field.value ? (
-                                                        format(field.value, 'PPP')
+                                                        format(new Date(field.value), 'PPP')
                                                     ) : (
                                                         <span>Pick a date</span>
                                                     )}
@@ -102,7 +102,7 @@ export default function EditProfileModal({ isOpen, onClose, onSubmit, isPending,
                                                 captionLayout="dropdown-buttons"
                                                 fromYear={1900}
                                                 toYear={new Date().getFullYear()}
-                                                selected={field.value}
+                                                selected={field.value ? new Date(field.value) : undefined}
                                                 onSelect={field.onChange}
                                                 disabled={(date) =>
                                                     date > new Date() || date < new Date('1900-01-01')
@@ -134,7 +134,7 @@ export default function EditProfileModal({ isOpen, onClose, onSubmit, isPending,
                             )}
                         />
                         <DialogFooter>
-                            <Button variant="outline" onClick={onClose}>Cancel</Button>
+                            <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>
                                 {isPending ? 'Saving...' : 'Save Changes'}
                             </Button>

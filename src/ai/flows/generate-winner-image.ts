@@ -49,30 +49,34 @@ const generateWinnerImageFlow = ai.defineFlow(
     const { rank, userName, userAvatarUrl, challengeTitle } = input;
 
     const rankText = rank === 1 ? '1st Place' : rank === 2 ? '2nd Place' : '3rd Place';
+    const rankColors = {
+        1: { bg: 'gold', text: 'black' },
+        2: { bg: 'silver', text: 'black' },
+        3: { bg: '#cd7f32', text: 'white' }
+    };
+    const rankColor = rankColors[rank as keyof typeof rankColors];
+
 
     // Step 1: Generate the base certificate without the avatar.
     const { media: baseCertificate } = await ai.generate({
         model: 'googleai/imagen-4.0-fast-generate-001',
-        prompt: `Create a visually stunning and celebratory winner's certificate image for a challenge on the "DAWION" app.
+        prompt: `Create a vibrant, trendy, and celebratory social media graphic for a winner on the "DAWION" app. The style should be modern and energetic, perfect for a Gen Z audience.
 
-        **Key elements to include:**
-        - **App Name:** "DAWION" should be clearly visible, perhaps in a stylized font at the top.
+        **Key Elements & Style:**
+        - **App Name:** "DAWION" should be integrated stylishly.
         - **Challenge Title:** Feature the text: "${challengeTitle}".
-        - **Winner's Name:** Prominently display the winner's name: "${userName}".
-        - **Rank:** Clearly show the achievement: "${rankText}".
-        - **Avatar Placeholder:** Leave a clean, empty, circular space in the center of the design where a user's avatar can be placed later. This space should be distinct and well-defined.
-        - **Theme:** The overall theme should be celebratory and prestigious. Think gold accents, laurels, a trophy or medal icon, and a clean, modern design. The background should be elegant, perhaps a subtle gradient or pattern.
+        - **Winner's Name:** Display "${userName}" in a bold, modern font.
+        - **Rank:** Clearly show the achievement: "${rankText}". Use colors appropriate for the rank (e.g., gold for 1st).
+        - **Avatar Placeholder:** Leave a clean, empty, circular space for the user's avatar. It should be a central focus.
+        - **Aesthetic:** Think bold gradients, abstract shapes, dynamic lines, and maybe a subtle glow or particle effect. Avoid formal certificate borders. The background should be eye-catching and modern.
         
-        **Layout guidance:**
-        1. "DAWION" at the top.
-        2. A graphic element like a trophy or laurel wreath.
-        3. The rank "${rankText}" below the graphic.
-        4. The circular placeholder for the avatar.
-        5. The winner's name, "${userName}".
-        6. A statement like "For conquering the challenge:".
-        7. The challenge title: "${challengeTitle}".
+        **Layout Idea:**
+        1. Place the circular avatar placeholder prominently.
+        2. Arrange the winner's name, rank, and challenge title around it in a dynamic, visually interesting composition.
+        3. The "DAWION" brand name can be smaller, perhaps in a corner.
+        4. The overall image should be a square (1:1 aspect ratio) and feel like a cool, shareable Instagram post.
         
-        The image should be high-quality and suitable for sharing on social media. Aspect ratio should be square (1:1).`,
+        Make it look exciting and something a user would be proud to share.`,
     });
 
     if (!baseCertificate.url) {
@@ -83,9 +87,9 @@ const generateWinnerImageFlow = ai.defineFlow(
 
     // Step 2: Composite the avatar onto the base certificate.
     const { media: finalImage } = await ai.generate({
-        model: 'googleai/gemini-2.5-flash-image-preview',
+        model: 'googleai/gemini-2.5-flash-image-preview', // This is Google's "nano-banana" model
         prompt: [
-            { text: `Take the user's avatar image and place it neatly inside the empty circular placeholder on the winner's certificate. Ensure the avatar fits perfectly within the circle and looks natural.` },
+            { text: `Take the user's avatar image and place it neatly inside the empty circular placeholder on the winner's graphic. Ensure the avatar fits perfectly within the circle and the composition looks seamless and professional.` },
             { media: { url: baseCertificate.url } }, // The certificate
             { media: { url: avatarDataUri } }      // The user's avatar
         ],

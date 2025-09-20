@@ -12,6 +12,9 @@ import { User, Lock, ShieldAlert, Bell, Palette, DatabaseZap } from 'lucide-reac
 import EditProfileModal from './edit-profile-modal';
 import ChangePasswordModal from './change-password-modal';
 import DangerZoneModal from './danger-zone-modal';
+import AppearanceModal from './appearance-modal';
+import NotificationsModal from './notifications-modal';
+import PrivacyDataModal from './privacy-data-modal';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(1, 'Display name is required.'),
@@ -68,9 +71,9 @@ export default function SettingsPage() {
   const settingsCards = [
     { id: 'edit', icon: User, title: 'Edit Profile', description: 'Update your personal details.', modal: <EditProfileModal isOpen={modalOpen === 'edit'} onClose={() => setModalOpen(null)} onSubmit={onProfileSubmit} isPending={isMutationPending} form={form} /> },
     { id: 'password', icon: Lock, title: 'Change Password', description: 'Update your security.', modal: <ChangePasswordModal isOpen={modalOpen === 'password'} onClose={() => setModalOpen(null)} /> },
-    { id: 'notifications', icon: Bell, title: 'Notifications', description: 'Manage your notification settings.' },
-    { id: 'appearance', icon: Palette, title: 'Appearance', description: 'Customize the look and feel.' },
-    { id: 'privacy', icon: DatabaseZap, title: 'Privacy & Data', description: 'Manage how your data is used.' },
+    { id: 'notifications', icon: Bell, title: 'Notifications', description: 'Manage your notification settings.', modal: <NotificationsModal isOpen={modalOpen === 'notifications'} onClose={() => setModalOpen(null)} /> },
+    { id: 'appearance', icon: Palette, title: 'Appearance', description: 'Customize the look and feel.', modal: <AppearanceModal isOpen={modalOpen === 'appearance'} onClose={() => setModalOpen(null)} /> },
+    { id: 'privacy', icon: DatabaseZap, title: 'Privacy & Data', description: 'Manage how your data is used.', modal: <PrivacyDataModal isOpen={modalOpen === 'privacy'} onClose={() => setModalOpen(null)} /> },
     { id: 'danger', icon: ShieldAlert, title: 'Danger Zone', description: 'Permanently delete account.', destructive: true, modal: <DangerZoneModal isOpen={modalOpen === 'danger'} onClose={() => setModalOpen(null)} /> },
   ];
 

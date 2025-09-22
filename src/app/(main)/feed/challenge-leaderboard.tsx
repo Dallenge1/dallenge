@@ -117,7 +117,7 @@ export default function ChallengeLeaderboard({ replies, challengeEnded }: Challe
                       className={cn(
                         'flex h-7 w-7 items-center justify-center rounded-full p-0 text-base',
                         {
-                          'bg-yellow-400 text-yellow-900 hover:bg-yellow-400/90': rank === 1,
+                          'bg-red-600 text-white hover:bg-red-600/90': rank === 1,
                           'bg-slate-300 text-slate-800 hover:bg-slate-300/90': rank === 2,
                           'bg-orange-400 text-orange-900 hover:bg-orange-400/90': rank === 3,
                         }

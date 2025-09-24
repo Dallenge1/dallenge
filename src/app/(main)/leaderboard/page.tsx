@@ -13,20 +13,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Coins } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useMemo } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
-
-type Post = {
-    id: string;
-    authorId: string;
-    authorName: string;
-    authorAvatarUrl: string;
-    coins?: string[];
-};
 
 type UserRank = {
   id: string;
@@ -36,30 +28,29 @@ type UserRank = {
 };
 
 export default function LeaderboardPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [leaderboard, setLeaderboard] = useState<UserRank[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'));
+    const q = query(collection(db, 'users'), orderBy('coins', 'desc'));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const postsData: Post[] = snapshot.docs.map((doc) => {
+        const usersData: UserRank[] = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
-            authorId: data.authorId,
-            authorName: data.authorName,
-            authorAvatarUrl: data.authorAvatarUrl,
-            coins: data.coins || [],
+            name: data.displayName,
+            avatarUrl: data.photoURL,
+            totalCoins: data.coins || 0,
           };
-        });
-        setPosts(postsData);
+        }).filter(user => user.totalCoins > 0);
+        setLeaderboard(usersData);
         setLoading(false);
       },
       (error) => {
-        console.error('Error fetching posts data: ', error);
+        console.error('Error fetching users data: ', error);
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -71,41 +62,6 @@ export default function LeaderboardPage() {
 
     return () => unsubscribe();
   }, [toast]);
-
-  const leaderboard = useMemo(() => {
-    if (loading) return [];
-
-    const userCoinTotals = new Map<string, UserRank>();
-
-    posts.forEach(post => {
-        if (!post.authorId) return;
-
-        // Initialize user if not already in the map
-        if (!userCoinTotals.has(post.authorId)) {
-            userCoinTotals.set(post.authorId, {
-                id: post.authorId,
-                name: post.authorName,
-                avatarUrl: post.authorAvatarUrl,
-                totalCoins: 0,
-            });
-        }
-
-        const user = userCoinTotals.get(post.authorId)!;
-        
-        // Update user info in case it changed on a newer post
-        user.name = post.authorName;
-        user.avatarUrl = post.authorAvatarUrl;
-
-        // Add the coins from the current post to the user's total
-        user.totalCoins += post.coins?.length || 0;
-    });
-
-    const sortedLeaderboard = Array.from(userCoinTotals.values())
-        .sort((a, b) => b.totalCoins - a.totalCoins)
-        .filter(user => user.totalCoins > 0); // Only show users who have earned coins
-
-    return sortedLeaderboard;
-  }, [posts, loading]);
 
   return (
     <div className="space-y-6">

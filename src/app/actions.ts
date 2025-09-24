@@ -104,24 +104,26 @@ export async function addCoin(postId: string, userId: string) {
       const postData = postSnap.data();
       const coins = postData.coins || [];
       const authorId = postData.authorId;
+
+      if (!authorId) {
+        throw new Error("Post author not found.");
+      }
+      
       const authorRef = doc(db, 'users', authorId);
+      const batch = writeBatch(db);
 
       if (coins.includes(userId)) {
         // User already gave a coin, so we remove it (toggle behavior)
-        await updateDoc(postRef, {
-          coins: arrayRemove(userId),
-        });
-        await updateDoc(authorRef, {
-            coins: increment(-1)
-        });
+        batch.update(postRef, { coins: arrayRemove(userId) });
+        batch.update(authorRef, { coins: increment(-1) });
       } else {
-        await updateDoc(postRef, {
-          coins: arrayUnion(userId),
-        });
-        await updateDoc(authorRef, {
-            coins: increment(1)
-        });
+        // User is giving a new coin
+        batch.update(postRef, { coins: arrayUnion(userId) });
+        batch.update(authorRef, { coins: increment(1) });
       }
+
+      await batch.commit();
+
       revalidatePath('/feed');
       revalidatePath(`/users/${authorId}`);
       revalidatePath('/leaderboard');

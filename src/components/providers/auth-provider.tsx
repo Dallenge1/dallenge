@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             followers: [],
             following: [],
             coins: 100, // Initial coins for new user
+            inventory: [],
         }, { merge: true });
 
         // If there is a referral, give the referrer coins

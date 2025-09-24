@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Users,
@@ -6,12 +7,14 @@ import {
   MessageCircle,
   Settings,
   Star,
+  ShoppingBag,
 } from 'lucide-react';
 
 export const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: "Get an overview of your activity." },
   { href: '/feed', label: 'Social Feed', icon: Users, description: "Connect with the community." },
   { href: '/chat', label: 'Messages', icon: MessageCircle, description: 'Chat with other users.'},
+  { href: '/store', label: 'Store', icon: ShoppingBag, description: 'Purchase items with your coins.' },
   { href: '/users/all', label: 'All Users', icon: Users, description: "Browse all users in the community."},
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy, description: "See who's at the top." },
   { href: '/feedback', label: 'Feedback', icon: Star, description: 'Share your feedback with us.' },

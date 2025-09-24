@@ -38,6 +38,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toggleFollow } from '@/app/follow-actions';
 import UserListDialog from './user-list-dialog';
+import { STORE_ITEMS } from '@/lib/store-items';
 
 
 type UserData = {
@@ -51,6 +52,7 @@ type UserData = {
   followers?: string[];
   following?: string[];
   coins?: number;
+  inventory?: string[];
 };
 
 type CommentData = {
@@ -136,6 +138,7 @@ export default function UserProfilePage() {
                 followers: userData.followers || [],
                 following: userData.following || [],
                 coins: userData.coins || 0,
+                inventory: userData.inventory || [],
             });
             setLoading(false);
         } else {
@@ -155,6 +158,7 @@ export default function UserProfilePage() {
                     followers: [],
                     following: [],
                     coins: 0,
+                    inventory: [],
                 });
             }
             setLoading(false);
@@ -509,6 +513,15 @@ export default function UserProfilePage() {
         <div className="flex-1 w-full">
             <div className='flex flex-wrap items-center gap-4'>
                 <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
+                
+                {user.inventory?.map(itemId => {
+                    const item = STORE_ITEMS.find(i => i.id === itemId);
+                    if (item && item.icon) {
+                        return <item.icon key={itemId} className="h-6 w-6 text-primary" />;
+                    }
+                    return null;
+                })}
+
                 <div className="flex items-center gap-2 text-lg font-mono text-primary">
                     <Coins className="h-6 w-6" />
                     <span className="font-semibold">{(user.coins ?? 0).toLocaleString()}</span>

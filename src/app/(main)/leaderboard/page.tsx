@@ -142,10 +142,10 @@ export default function LeaderboardPage() {
                               alt={player.name}
                             />
                             <AvatarFallback>
-                              {player.name.charAt(0)}
+                              {player.name ? player.name.charAt(0) : 'U'}
                             </AvatarFallback>
                           </Avatar>
-                        <span className="font-medium group-hover:underline">{player.name}</span>
+                        <span className="font-medium group-hover:underline">{player.name || 'Anonymous User'}</span>
                       </Link>
                     </TableCell>
                     <TableCell className="text-right font-mono">

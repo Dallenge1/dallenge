@@ -21,7 +21,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Heart, MessageCircle, Share2, Coins, Trophy, CalendarIcon, Upload, Loader2, Video, User, Lock, ShieldAlert, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Coins, Trophy, CalendarIcon, Upload, Loader2, Video, User, Lock, ShieldAlert, MoreHorizontal, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
 import { likePost, addCoin, deletePost } from '@/app/actions';
@@ -50,6 +50,7 @@ type UserData = {
   phone?: string;
   followers?: string[];
   following?: string[];
+  coins?: number;
 };
 
 type CommentData = {
@@ -103,6 +104,18 @@ export default function UserProfilePage() {
   const [dialogOpen, setDialogOpen] = useState<'followers' | 'following' | null>(null);
   
   const isFollowing = user?.followers?.includes(currentUser?.uid ?? '') ?? false;
+  const [referralLink, setReferralLink] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isCurrentUserProfile && userId) {
+        setReferralLink(`${window.location.origin}/signup?ref=${userId}`);
+    }
+  }, [isCurrentUserProfile, userId]);
+
+  const handleCopyReferral = () => {
+    navigator.clipboard.writeText(referralLink);
+    toast({ title: 'Referral link copied!' });
+  }
 
   useEffect(() => {
     if (!userId) return;
@@ -122,6 +135,7 @@ export default function UserProfilePage() {
                 phone: userData.phone,
                 followers: userData.followers || [],
                 following: userData.following || [],
+                coins: userData.coins || 0,
             });
             setLoading(false);
         } else {
@@ -140,6 +154,7 @@ export default function UserProfilePage() {
                     photoURL: postData.authorAvatarUrl,
                     followers: [],
                     following: [],
+                    coins: 0,
                 });
             }
             setLoading(false);
@@ -496,7 +511,7 @@ export default function UserProfilePage() {
                 <h1 className="text-3xl font-bold tracking-tight">{user.displayName}</h1>
                 <div className="flex items-center gap-2 text-lg font-mono text-primary">
                     <Coins className="h-6 w-6" />
-                    <span className="font-semibold">{totalCoins.toLocaleString()}</span>
+                    <span className="font-semibold">{(user.coins ?? 0).toLocaleString()}</span>
                 </div>
             </div>
           <div className="flex flex-wrap items-center gap-4 text-sm mt-2">
@@ -512,7 +527,13 @@ export default function UserProfilePage() {
            {user.bio && <p className="text-sm max-w-prose mt-2">{user.bio}</p>}
            {user.dob && <p className="text-sm text-muted-foreground">Born {format(new Date(user.dob), 'MMMM d, yyyy')}</p>}
            {isCurrentUserProfile ? (
-             <Button asChild className="mt-4" variant="outline"><Link href="/settings">Edit Profile</Link></Button>
+             <div className="flex flex-wrap gap-2 mt-4">
+                <Button asChild variant="outline"><Link href="/settings">Edit Profile</Link></Button>
+                 <Button onClick={handleCopyReferral} variant="secondary">
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Referral Link
+                </Button>
+             </div>
            ) : currentUser && (
              <div className="flex gap-2 mt-4">
                 <Button onClick={handleFollowToggle} disabled={isPending} variant={isFollowing ? 'secondary' : 'default'}>
@@ -583,7 +604,3 @@ export default function UserProfilePage() {
     </div>
   );
 }
-
-    
-
-    

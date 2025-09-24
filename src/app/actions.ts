@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc, query, where, getDocs, writeBatch, increment } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { auth } from 'firebase-admin';
 import { getAuth } from 'firebase/auth';
@@ -104,21 +104,26 @@ export async function addCoin(postId: string, userId: string) {
       const postData = postSnap.data();
       const coins = postData.coins || [];
       const authorId = postData.authorId;
+      const authorRef = doc(db, 'users', authorId);
 
       if (coins.includes(userId)) {
         // User already gave a coin, so we remove it (toggle behavior)
         await updateDoc(postRef, {
           coins: arrayRemove(userId),
         });
+        await updateDoc(authorRef, {
+            coins: increment(-1)
+        });
       } else {
         await updateDoc(postRef, {
           coins: arrayUnion(userId),
         });
+        await updateDoc(authorRef, {
+            coins: increment(1)
+        });
       }
       revalidatePath('/feed');
-      if (authorId) {
-        revalidatePath(`/users/${authorId}`);
-      }
+      revalidatePath(`/users/${authorId}`);
       revalidatePath('/leaderboard');
     }
   } catch (error) {

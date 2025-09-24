@@ -26,7 +26,8 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { Chrome } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 const formSchema = z
   .object({
@@ -48,6 +49,15 @@ export default function SignupPage() {
   const { signUp, signInWithGoogle, loading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [referralId, setReferralId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralId(ref);
+    }
+  }, [searchParams]);
 
   const form = useForm<SignupFormInputs>({
     resolver: zodResolver(formSchema),
@@ -62,10 +72,10 @@ export default function SignupPage() {
 
   const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
     try {
-      await signUp(data.email, data.password, data.firstName, data.lastName);
+      await signUp(data.email, data.password, data.firstName, data.lastName, referralId);
       toast({
         title: 'Success',
-        description: 'Account created successfully!',
+        description: 'Account created successfully! You received 100 bonus coins.',
       });
       router.push('/dashboard');
     } catch (error) {
@@ -80,10 +90,10 @@ export default function SignupPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(referralId);
       toast({
         title: 'Success',
-        description: 'Account created successfully!',
+        description: 'Account created successfully! You received 100 bonus coins.',
       });
       router.push('/dashboard');
     } catch (error) {
@@ -105,6 +115,7 @@ export default function SignupPage() {
           <CardTitle className="text-2xl">Sign Up</CardTitle>
           <CardDescription>
             Enter your information to create an account.
+            {referralId && <p className="text-primary font-semibold mt-2">You're signing up with a referral!</p>}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

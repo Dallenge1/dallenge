@@ -16,7 +16,7 @@ import {
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -24,8 +24,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
-  signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
-  signInWithGoogle: () => Promise<any>;
+  signUp: (email: string, pass: string, firstName: string, lastName: string, referralId?: string | null) => Promise<any>;
+  signInWithGoogle: (referralId?: string | null) => Promise<any>;
   logOut: () => Promise<any>;
   updateUserPhoto: (file: File | Blob) => Promise<void>;
   updateUserProfile: (data: {displayName: string, bio?: string, dob?: Date, phone?: string}) => Promise<void>;
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const authInstance = firebaseAuth;
   
-  const createUserInFirestore = async (user: User) => {
+  const createUserInFirestore = async (user: User, referralId: string | null = null) => {
       const userRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userRef);
       if (!docSnap.exists()) {
@@ -51,14 +51,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             uid: user.uid,
             followers: [],
             following: [],
+            coins: 100, // Initial coins for new user
         }, { merge: true });
+
+        // If there is a referral, give the referrer coins
+        if (referralId) {
+            const referrerRef = doc(db, 'users', referralId);
+            const referrerSnap = await getDoc(referrerRef);
+            if (referrerSnap.exists()) {
+                await setDoc(referrerRef, {
+                    coins: increment(1000)
+                }, { merge: true });
+            }
+        }
       }
   }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
       if (user) {
-        await createUserInFirestore(user);
+        // We don't create user here anymore on just auth state change,
+        // creation is handled explicitly on sign up.
         setUser(user);
       } else {
         setUser(null);
@@ -70,7 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [authInstance]);
   
 
-  const signUp = async (email: string, pass: string, firstName: string, lastName: string) => {
+  const signUp = async (email: string, pass: string, firstName: string, lastName: string, referralId: string | null = null) => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
@@ -83,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       const updatedUser = { ...userCredential.user, displayName, photoURL: defaultAvatarUrl };
-      await createUserInFirestore(updatedUser as User);
+      await createUserInFirestore(updatedUser as User, referralId);
 
       setUser(updatedUser);
       return userCredential;
@@ -96,19 +109,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true);
     try {
         const userCredential = await signInWithEmailAndPassword(authInstance, email, pass);
-        await createUserInFirestore(userCredential.user);
+        // Don't create user on sign in, only sign up.
         return userCredential;
     } finally {
         setLoading(false);
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (referralId: string | null = null) => {
     setLoading(true);
     try {
       const result = await signInWithPopup(authInstance, googleProvider);
       const user = result.user;
-      await createUserInFirestore(user);
+      await createUserInFirestore(user, referralId);
       setUser(user);
       return result;
     } finally {
@@ -270,5 +283,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

@@ -14,7 +14,7 @@ import { Coins } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,7 +33,8 @@ export default function LeaderboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(collection(db, 'users'), orderBy('coins', 'desc'));
+    // Query all users. Sorting will be done on the client side.
+    const q = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
@@ -43,9 +44,12 @@ export default function LeaderboardPage() {
             id: doc.id,
             name: data.displayName,
             avatarUrl: data.photoURL,
-            totalCoins: data.coins || 0,
+            totalCoins: data.coins || 0, // Default to 0 if coins field doesn't exist
           };
         });
+
+        // Sort users by totalCoins in descending order on the client
+        usersData.sort((a, b) => b.totalCoins - a.totalCoins);
 
         setLeaderboard(usersData);
         setLoading(false);

@@ -14,7 +14,7 @@ import { Coins } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,32 +33,62 @@ export default function LeaderboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(collection(db, 'users'), orderBy('coins', 'desc'));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const usersData: UserRank[] = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.displayName,
-            avatarUrl: data.photoURL,
-            totalCoins: data.coins || 0,
-          };
-        }).filter(user => user.totalCoins > 0);
-        setLeaderboard(usersData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching users data: ', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not load leaderboard data.',
-        });
-        setLoading(false);
-      }
-    );
+    const calculateLeaderboard = async () => {
+        setLoading(true);
+        try {
+            const postsQuery = query(collection(db, 'posts'));
+            const postsSnapshot = await getDocs(postsQuery);
+            
+            const userCoinCounts: Record<string, { name: string; avatarUrl: string; totalCoins: number }> = {};
+            const userSet = new Set<string>();
+
+            postsSnapshot.forEach((doc) => {
+                const post = doc.data();
+                const authorId = post.authorId;
+
+                if (!authorId) return;
+
+                if (!userSet.has(authorId)) {
+                   userCoinCounts[authorId] = {
+                        name: post.authorName,
+                        avatarUrl: post.authorAvatarUrl,
+                        totalCoins: 0,
+                    };
+                    userSet.add(authorId);
+                }
+                
+                if (userCoinCounts[authorId]) {
+                    userCoinCounts[authorId].totalCoins += post.coins?.length || 0;
+                }
+            });
+
+            const usersData: UserRank[] = Object.entries(userCoinCounts).map(([id, data]) => ({
+                id,
+                ...data,
+            })).filter(user => user.totalCoins > 0);
+
+            usersData.sort((a, b) => b.totalCoins - a.totalCoins);
+
+            setLeaderboard(usersData);
+            setLoading(false);
+
+        } catch (error) {
+             console.error('Error calculating leaderboard: ', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not load leaderboard data.',
+            });
+            setLoading(false);
+        }
+    };
+    
+    calculateLeaderboard();
+    
+    // Set up a listener to recalculate when posts change
+    const unsubscribe = onSnapshot(collection(db, 'posts'), (snapshot) => {
+        calculateLeaderboard();
+    });
 
     return () => unsubscribe();
   }, [toast]);
@@ -80,7 +110,7 @@ export default function LeaderboardPage() {
               <TableHead className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Coins className="h-4 w-4 text-amber-500" />
-                  <span>Total Coins Earned</span>
+                  <span>Total Coins Earned From Posts</span>
                 </div>
               </TableHead>
             </TableRow>
@@ -154,7 +184,7 @@ export default function LeaderboardPage() {
         </Table>
         {!loading && leaderboard.length === 0 && (
             <div className='text-center p-8 text-muted-foreground'>
-                No one has earned any coins yet.
+                No one has earned any coins from posts yet.
             </div>
         )}
       </div>

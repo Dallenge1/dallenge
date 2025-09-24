@@ -51,7 +51,7 @@ type UserData = {
   phone?: string;
   followers?: string[];
   following?: string[];
-  coins?: number;
+  coins?: number; // This will now be considered the base coins (referral, etc)
   inventory?: string[];
   status?: 'online' | 'offline';
   lastSeen?: Timestamp;
@@ -91,6 +91,7 @@ export default function UserProfilePage() {
 
   const [user, setUser] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postCoins, setPostCoins] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
@@ -185,8 +186,10 @@ export default function UserProfilePage() {
 
     const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
+      let totalPostCoins = 0;
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        totalPostCoins += data.coins?.length || 0;
         postsData.push({
           id: doc.id,
           authorId: data.authorId,
@@ -205,6 +208,7 @@ export default function UserProfilePage() {
         });
       });
       setPosts(postsData);
+      setPostCoins(totalPostCoins);
     });
 
     return () => {
@@ -212,10 +216,6 @@ export default function UserProfilePage() {
         unsubscribePosts();
     };
   }, [userId, toast]);
-  
-  const totalCoins = React.useMemo(() => {
-    return posts.reduce((acc, post) => acc + (post.coins?.length || 0), 0);
-  }, [posts]);
   
   const handleAvatarClick = () => {
     if (!isCurrentUserProfile) return;
@@ -531,9 +531,9 @@ export default function UserProfilePage() {
                     return null;
                 })}
 
-                <div className="flex items-center gap-2 text-lg font-mono text-primary">
+                <div className="flex items-center gap-2 text-lg font-mono text-primary" title="Coins earned from posts">
                     <Coins className="h-6 w-6" />
-                    <span className="font-semibold">{(user.coins ?? 0).toLocaleString()}</span>
+                    <span className="font-semibold">{postCoins.toLocaleString()}</span>
                 </div>
             </div>
           <div className="flex flex-wrap items-center gap-4 text-sm mt-2">

@@ -112,10 +112,9 @@ export async function addCoin(postId: string, userId: string) {
         throw new Error("Post author not found!");
       }
       
-      // Prevent users from giving coins to their own posts
       if (authorId === userId) {
         console.log("User cannot give a coin to their own post.");
-        return; // Exit transaction
+        return; 
       }
 
       const authorRef = doc(db, 'users', authorId);
@@ -132,7 +131,6 @@ export async function addCoin(postId: string, userId: string) {
       }
     });
 
-    // Revalidate paths after the transaction is successful
     const postSnap = await getDoc(postRef);
     if(postSnap.exists()) {
         const authorId = postSnap.data().authorId;
@@ -144,9 +142,8 @@ export async function addCoin(postId: string, userId: string) {
     revalidatePath('/leaderboard');
 
   } catch (error) {
-    console.error('Error adding coin:', error);
+    console.error('Error in addCoin transaction:', error);
     if (error instanceof Error && error.message.includes("own post")) {
-        // Don't throw an error to the user for this specific case
         return;
     }
     throw new Error('Failed to give coin.');

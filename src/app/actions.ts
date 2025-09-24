@@ -112,10 +112,11 @@ export async function addCoin(postId: string, userId: string) {
       }
       // Cannot give coin to your own post
       if (authorId === userId) {
+        console.log("User attempting to give coin to their own post. Skipping.");
         return;
       }
-      const authorRef = doc(db, 'users', authorId);
       
+      const authorRef = doc(db, 'users', authorId);
       const coins = postData.coins || [];
       
       if (coins.includes(userId)) {

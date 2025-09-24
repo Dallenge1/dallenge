@@ -14,7 +14,7 @@ import { Coins } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,40 +33,21 @@ export default function LeaderboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'));
+    const q = query(collection(db, 'users'), orderBy('coins', 'desc'));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const userCoinData = new Map<string, { totalCoins: number; name: string; avatarUrl: string }>();
-
-        snapshot.forEach((doc) => {
-          const post = doc.data();
-          const authorId = post.authorId;
-          const coins = post.coins?.length || 0;
-
-          if (authorId) {
-            const userData = userCoinData.get(authorId) || {
-              totalCoins: 0,
-              name: post.authorName,
-              avatarUrl: post.authorAvatarUrl,
-            };
-            userData.totalCoins += coins;
-            userCoinData.set(authorId, userData);
-          }
+        const usersData: UserRank[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.displayName,
+            avatarUrl: data.photoURL,
+            totalCoins: data.coins || 0,
+          };
         });
 
-        const sortedLeaderboard: UserRank[] = Array.from(
-          userCoinData.entries()
-        )
-          .map(([id, data]) => ({
-            id,
-            name: data.name,
-            avatarUrl: data.avatarUrl,
-            totalCoins: data.totalCoins,
-          }))
-          .sort((a, b) => b.totalCoins - a.totalCoins);
-
-        setLeaderboard(sortedLeaderboard);
+        setLeaderboard(usersData);
         setLoading(false);
       },
       (error) => {
@@ -88,7 +69,7 @@ export default function LeaderboardPage() {
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
         <p className="text-muted-foreground">
-          See who's at the top of the game based on coins received.
+          See who's at the top of the game based on their total coins.
         </p>
       </header>
       <div className="overflow-hidden rounded-lg border">

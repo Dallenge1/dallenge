@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc, query, where, getDocs, writeBatch, increment } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp, deleteDoc, query, where, getDocs, writeBatch, increment, runTransaction } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { auth } from 'firebase-admin';
 import { getAuth } from 'firebase/auth';
@@ -98,35 +98,41 @@ export async function likePost(postId: string, userId: string) {
 export async function addCoin(postId: string, userId: string) {
   try {
     const postRef = doc(db, 'posts', postId);
-    const postSnap = await getDoc(postRef);
+    
+    await runTransaction(db, async (transaction) => {
+      const postSnap = await transaction.get(postRef);
+      if (!postSnap.exists()) {
+        throw "Post does not exist!";
+      }
 
-    if (postSnap.exists()) {
       const postData = postSnap.data();
-      const coins = postData.coins || [];
       const authorId = postData.authorId;
-
       if (!authorId) {
-        throw new Error("Post author not found.");
+        throw "Post author not found!";
       }
-      
       const authorRef = doc(db, 'users', authorId);
-      const batch = writeBatch(db);
-
+      
+      const coins = postData.coins || [];
+      
       if (coins.includes(userId)) {
-        // User already gave a coin, so we remove it (toggle behavior)
-        batch.update(postRef, { coins: arrayRemove(userId) });
-        batch.update(authorRef, { coins: increment(-1) });
+        // User is taking back their coin
+        transaction.update(postRef, { coins: arrayRemove(userId) });
+        transaction.update(authorRef, { coins: increment(-1) });
       } else {
-        // User is giving a new coin
-        batch.update(postRef, { coins: arrayUnion(userId) });
-        batch.update(authorRef, { coins: increment(1) });
+        // User is giving a coin
+        transaction.update(postRef, { coins: arrayUnion(userId) });
+        transaction.update(authorRef, { coins: increment(1) });
       }
+    });
 
-      await batch.commit();
-
-      revalidatePath('/feed');
-      revalidatePath(`/users/${authorId}`);
-      revalidatePath('/leaderboard');
+    revalidatePath('/feed');
+    revalidatePath('/leaderboard');
+    const postSnap = await getDoc(postRef);
+    if(postSnap.exists()) {
+        const authorId = postSnap.data().authorId;
+        if(authorId) {
+            revalidatePath(`/users/${authorId}`);
+        }
     }
   } catch (error) {
     console.error('Error adding coin:', error);

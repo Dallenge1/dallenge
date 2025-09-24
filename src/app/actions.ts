@@ -110,6 +110,10 @@ export async function addCoin(postId: string, userId: string) {
       if (!authorId) {
         throw "Post author not found!";
       }
+      // Cannot give coin to your own post
+      if (authorId === userId) {
+        return;
+      }
       const authorRef = doc(db, 'users', authorId);
       
       const coins = postData.coins || [];

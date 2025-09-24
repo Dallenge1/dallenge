@@ -96,54 +96,63 @@ export async function likePost(postId: string, userId: string) {
 }
 
 export async function addCoin(postId: string, userId: string) {
+  const postRef = doc(db, 'posts', postId);
+
   try {
-    const postRef = doc(db, 'posts', postId);
-    
     await runTransaction(db, async (transaction) => {
       const postSnap = await transaction.get(postRef);
       if (!postSnap.exists()) {
-        throw "Post does not exist!";
+        throw new Error("Post does not exist!");
       }
 
       const postData = postSnap.data();
       const authorId = postData.authorId;
+
       if (!authorId) {
-        throw "Post author not found!";
-      }
-      // Cannot give coin to your own post
-      if (authorId === userId) {
-        console.log("User attempting to give coin to their own post. Skipping.");
-        return;
+        throw new Error("Post author not found!");
       }
       
+      // Prevent users from giving coins to their own posts
+      if (authorId === userId) {
+        console.log("User cannot give a coin to their own post.");
+        return; // Exit transaction
+      }
+
       const authorRef = doc(db, 'users', authorId);
       const coins = postData.coins || [];
-      
+
       if (coins.includes(userId)) {
         // User is taking back their coin
         transaction.update(postRef, { coins: arrayRemove(userId) });
         transaction.update(authorRef, { coins: increment(-1) });
       } else {
-        // User is giving a coin
+        // User is giving a coin for the first time
         transaction.update(postRef, { coins: arrayUnion(userId) });
         transaction.update(authorRef, { coins: increment(1) });
       }
     });
 
-    revalidatePath('/feed');
-    revalidatePath('/leaderboard');
+    // Revalidate paths after the transaction is successful
     const postSnap = await getDoc(postRef);
     if(postSnap.exists()) {
         const authorId = postSnap.data().authorId;
-        if(authorId) {
+        if (authorId) {
             revalidatePath(`/users/${authorId}`);
         }
     }
+    revalidatePath('/feed');
+    revalidatePath('/leaderboard');
+
   } catch (error) {
     console.error('Error adding coin:', error);
-    throw new Error('Failed to add coin.');
+    if (error instanceof Error && error.message.includes("own post")) {
+        // Don't throw an error to the user for this specific case
+        return;
+    }
+    throw new Error('Failed to give coin.');
   }
 }
+
 
 export async function addComment(
   postId: string,

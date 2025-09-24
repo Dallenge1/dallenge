@@ -118,17 +118,30 @@ export async function addCoin(postId: string, userId: string) {
       }
 
       const authorRef = doc(db, 'users', authorId);
-      const coins = postData.coins || [];
+      const authorSnap = await transaction.get(authorRef);
+      if (!authorSnap.exists()) {
+          throw new Error("Post author's user profile not found!");
+      }
 
-      if (coins.includes(userId)) {
+      const authorData = authorSnap.data();
+      const currentAuthorCoins = authorData.coins || 0;
+
+      const postCoins = postData.coins || [];
+      const isCoinGiven = postCoins.includes(userId);
+      
+      let newAuthorCoins;
+
+      if (isCoinGiven) {
         // User is taking back their coin
         transaction.update(postRef, { coins: arrayRemove(userId) });
-        transaction.update(authorRef, { coins: increment(-1) });
+        newAuthorCoins = currentAuthorCoins - 1;
       } else {
         // User is giving a coin for the first time
         transaction.update(postRef, { coins: arrayUnion(userId) });
-        transaction.update(authorRef, { coins: increment(1) });
+        newAuthorCoins = currentAuthorCoins + 1;
       }
+      
+      transaction.update(authorRef, { coins: newAuthorCoins < 0 ? 0 : newAuthorCoins });
     });
 
     const postSnap = await getDoc(postRef);

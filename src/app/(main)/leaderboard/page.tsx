@@ -13,12 +13,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Coins } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+
+type Post = {
+    id: string;
+    authorId: string;
+    authorName: string;
+    authorAvatarUrl: string;
+    coins?: string[];
+};
 
 type UserRank = {
   id: string;
@@ -28,38 +36,34 @@ type UserRank = {
 };
 
 export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<UserRank[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Query all users. Sorting will be done on the client side.
-    const q = query(collection(db, 'users'));
+    const q = query(collection(db, 'posts'));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const usersData: UserRank[] = snapshot.docs.map((doc) => {
+        const postsData: Post[] = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
-            name: data.displayName,
-            avatarUrl: data.photoURL,
-            totalCoins: data.coins || 0, // Default to 0 if coins field doesn't exist
+            authorId: data.authorId,
+            authorName: data.authorName,
+            authorAvatarUrl: data.authorAvatarUrl,
+            coins: data.coins || [],
           };
         });
-
-        // Sort users by totalCoins in descending order on the client
-        usersData.sort((a, b) => b.totalCoins - a.totalCoins);
-
-        setLeaderboard(usersData);
+        setPosts(postsData);
         setLoading(false);
       },
       (error) => {
-        console.error('Error fetching leaderboard data: ', error);
+        console.error('Error fetching posts data: ', error);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Could not load leaderboard.',
+          description: 'Could not load leaderboard data.',
         });
         setLoading(false);
       }
@@ -68,12 +72,47 @@ export default function LeaderboardPage() {
     return () => unsubscribe();
   }, [toast]);
 
+  const leaderboard = useMemo(() => {
+    if (loading) return [];
+
+    const userCoinTotals = new Map<string, UserRank>();
+
+    posts.forEach(post => {
+        if (!post.authorId) return;
+
+        // Initialize user if not already in the map
+        if (!userCoinTotals.has(post.authorId)) {
+            userCoinTotals.set(post.authorId, {
+                id: post.authorId,
+                name: post.authorName,
+                avatarUrl: post.authorAvatarUrl,
+                totalCoins: 0,
+            });
+        }
+
+        const user = userCoinTotals.get(post.authorId)!;
+        
+        // Update user info in case it changed on a newer post
+        user.name = post.authorName;
+        user.avatarUrl = post.authorAvatarUrl;
+
+        // Add the coins from the current post to the user's total
+        user.totalCoins += post.coins?.length || 0;
+    });
+
+    const sortedLeaderboard = Array.from(userCoinTotals.values())
+        .sort((a, b) => b.totalCoins - a.totalCoins)
+        .filter(user => user.totalCoins > 0); // Only show users who have earned coins
+
+    return sortedLeaderboard;
+  }, [posts, loading]);
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
         <p className="text-muted-foreground">
-          See who's at the top of the game based on their total coins.
+          See who's at the top of the game based on coins earned from posts and challenges.
         </p>
       </header>
       <div className="overflow-hidden rounded-lg border">
@@ -85,7 +124,7 @@ export default function LeaderboardPage() {
               <TableHead className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Coins className="h-4 w-4 text-amber-500" />
-                  <span>Total Coins</span>
+                  <span>Total Coins Earned</span>
                 </div>
               </TableHead>
             </TableRow>

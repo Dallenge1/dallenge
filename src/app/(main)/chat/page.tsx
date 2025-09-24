@@ -28,6 +28,8 @@ type UserInfo = {
   id: string;
   displayName: string;
   photoURL: string;
+  status?: 'online' | 'offline';
+  lastSeen?: Timestamp;
 };
 
 type Chat = {
@@ -77,9 +79,10 @@ export default function ChatsPage() {
                             id: userSnap.id,
                             displayName: userData.displayName,
                             photoURL: userData.photoURL,
+                            status: userData.status,
+                            lastSeen: userData.lastSeen,
                         };
                     } else {
-                        // Fallback to fetching user info from posts
                         const postsQuery = query(
                             collection(db, 'posts'),
                             where('authorId', '==', otherUserId),
@@ -169,15 +172,20 @@ export default function ChatsPage() {
                   }}
                   className="flex items-center gap-4 p-4 transition-colors hover:bg-muted/50"
                 >
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage
-                      src={chat.otherUser.photoURL}
-                      alt={chat.otherUser.displayName}
-                    />
-                    <AvatarFallback>
-                      {chat.otherUser.displayName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage
+                        src={chat.otherUser.photoURL}
+                        alt={chat.otherUser.displayName}
+                      />
+                      <AvatarFallback>
+                        {chat.otherUser.displayName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {chat.otherUser.status === 'online' && (
+                       <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
+                    )}
+                  </div>
                   <div className="flex-1 truncate">
                     <div className="flex justify-between">
                         <h3 className="font-semibold">{chat.otherUser.displayName}</h3>

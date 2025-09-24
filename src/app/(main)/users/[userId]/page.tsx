@@ -53,6 +53,8 @@ type UserData = {
   following?: string[];
   coins?: number;
   inventory?: string[];
+  status?: 'online' | 'offline';
+  lastSeen?: Timestamp;
 };
 
 type CommentData = {
@@ -139,6 +141,8 @@ export default function UserProfilePage() {
                 following: userData.following || [],
                 coins: userData.coins || 0,
                 inventory: userData.inventory || [],
+                status: userData.status,
+                lastSeen: userData.lastSeen,
             });
             setLoading(false);
         } else {
@@ -488,10 +492,15 @@ export default function UserProfilePage() {
         )}
       <header className="flex flex-col md:flex-row items-start gap-4">
         <div className={cn("relative group", isCurrentUserProfile && "cursor-pointer")} onClick={handleAvatarClick}>
-            <Avatar className="h-24 w-24 border-2">
-                <AvatarImage src={user.photoURL} alt={user.displayName} />
-                <AvatarFallback className="text-3xl">{user.displayName?.charAt(0)}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+                <Avatar className="h-24 w-24 border-2">
+                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                    <AvatarFallback className="text-3xl">{user.displayName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                {user.status === 'online' && !isCurrentUserProfile && (
+                     <span className="absolute bottom-1 right-1 block h-5 w-5 rounded-full bg-green-500 ring-4 ring-background" />
+                )}
+            </div>
              {isCurrentUserProfile && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                      {isMutationPending ? (

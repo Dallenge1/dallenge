@@ -16,7 +16,7 @@ import {
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -39,6 +39,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const authInstance = firebaseAuth;
   
+  const updateUserPresence = async (userId: string, status: 'online' | 'offline') => {
+    if (!userId) return;
+    const userRef = doc(db, 'users', userId);
+    try {
+        await setDoc(userRef, {
+            status: status,
+            lastSeen: serverTimestamp()
+        }, { merge: true });
+    } catch (error) {
+        console.error("Error updating presence:", error);
+    }
+  };
+
   const createUserInFirestore = async (user: User, referralId: string | null = null) => {
       const userRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(userRef);
@@ -53,6 +66,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             following: [],
             coins: 100, // Initial coins for new user
             inventory: [],
+            status: 'online',
+            lastSeen: serverTimestamp(),
         }, { merge: true });
 
         // If there is a referral, give the referrer coins
@@ -72,13 +87,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
       if (user) {
         setUser(user);
+        updateUserPresence(user.uid, 'online');
       } else {
         setUser(null);
       }
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Handle user leaving the site
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+        if(authInstance.currentUser) {
+            updateUserPresence(authInstance.currentUser.uid, 'offline');
+        }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+        unsubscribe();
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
   }, [authInstance]);
   
 
@@ -127,9 +155,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const logOut = () => {
+  const logOut = async () => {
     setLoading(true);
     try {
+        if(user) {
+            await updateUserPresence(user.uid, 'offline');
+        }
         return signOut(authInstance);
     } finally {
         setLoading(false);

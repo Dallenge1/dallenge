@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { sendMessage, markChatAsRead } from '@/app/chat-actions';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
 
 type Message = {
   id: string;
@@ -35,29 +36,18 @@ type OtherUser = {
   id: string;
   displayName: string;
   photoURL: string;
+  status?: 'online' | 'offline';
+  lastSeen?: Timestamp;
 };
 
 export default function ChatPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const chatId = params.chatId as string;
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [otherUser, setOtherUser] = useState<OtherUser | null>(() => {
-    const displayName = searchParams.get('displayName');
-    const photoURL = searchParams.get('photoURL');
-    const otherUserId = searchParams.get('otherUserId');
-    if (displayName && photoURL && otherUserId) {
-        return {
-            id: otherUserId,
-            displayName: decodeURIComponent(displayName),
-            photoURL: decodeURIComponent(photoURL),
-        };
-    }
-    return null;
-  });
+  const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -81,43 +71,40 @@ export default function ChatPage() {
   useEffect(() => {
     if (!chatId || !currentUser) return;
 
-    // Fetch fresh user data in the background to ensure it's up-to-date
-    const fetchChatInfo = async () => {
-      // No need to set loading to true for the header, it's pre-filled
-      try {
-        const chatRef = doc(db, 'chats', chatId);
-        const chatSnap = await getDoc(chatRef);
-
-        if (chatSnap.exists()) {
+    const chatRef = doc(db, 'chats', chatId);
+    
+    const unsubscribeChat = onSnapshot(chatRef, async (chatSnap) => {
+       if (chatSnap.exists()) {
           const chatData = chatSnap.data();
           const otherUserId = chatData.members.find((id: string) => id !== currentUser.uid);
           
-          if(otherUserId && (!otherUser || otherUser.id !== otherUserId)) { // Fetch only if not passed or mismatched
+          if(otherUserId) {
             const userRef = doc(db, 'users', otherUserId);
-            const userSnap = await getDoc(userRef);
-
-            if(userSnap.exists()){
-                const userData = userSnap.data();
-                 setOtherUser({
-                    id: otherUserId,
-                    displayName: userData.displayName,
-                    photoURL: userData.photoURL,
-                });
-            }
+            // Listen for changes on the other user's document for real-time presence
+            const unsubscribeUser = onSnapshot(userRef, (userSnap) => {
+                if(userSnap.exists()){
+                    const userData = userSnap.data();
+                    setOtherUser({
+                        id: otherUserId,
+                        displayName: userData.displayName,
+                        photoURL: userData.photoURL,
+                        status: userData.status,
+                        lastSeen: userData.lastSeen,
+                    });
+                }
+            });
+            return () => unsubscribeUser(); // Cleanup user listener
           }
         }
-      } catch (error) {
-        console.error("Failed to fetch fresh chat info:", error)
-        // Don't toast here as it might be annoying if it fails in the background
-      }
-    };
-
-    fetchChatInfo();
+    }, (error) => {
+        console.error("Failed to fetch chat info:", error)
+        toast({ variant: 'destructive', title: "Error", description: "Could not load chat details." });
+    });
 
     const messagesCol = collection(db, 'chats', chatId, 'messages');
     const q = query(messagesCol, orderBy('timestamp', 'asc'));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribeMessages = onSnapshot(q, (querySnapshot) => {
       const msgs: Message[] = [];
       querySnapshot.forEach((doc) => {
         msgs.push({ id: doc.id, ...doc.data() } as Message);
@@ -130,8 +117,11 @@ export default function ChatPage() {
         setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [chatId, currentUser, toast, otherUser]);
+    return () => {
+        unsubscribeChat();
+        unsubscribeMessages();
+    };
+  }, [chatId, currentUser, toast]);
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !currentUser) return;
@@ -150,6 +140,19 @@ export default function ChatPage() {
     });
   };
 
+  const renderPresence = () => {
+    if (!otherUser) return null;
+    if (otherUser.status === 'online') {
+        return <p className="text-xs text-green-500">Active now</p>
+    }
+    if (otherUser.lastSeen) {
+        return <p className="text-xs text-muted-foreground">
+            Last seen {formatDistanceToNow(otherUser.lastSeen.toDate(), { addSuffix: true })}
+        </p>
+    }
+    return null;
+  }
+
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center gap-4 border-b p-4">
@@ -164,12 +167,18 @@ export default function ChatPage() {
               <AvatarImage src={otherUser.photoURL} alt={otherUser.displayName} />
               <AvatarFallback>{otherUser.displayName.charAt(0)}</AvatarFallback>
             </Avatar>
-            <h1 className="text-xl font-bold group-hover:underline">{otherUser.displayName}</h1>
+            <div>
+                <h1 className="text-xl font-bold group-hover:underline">{otherUser.displayName}</h1>
+                {renderPresence()}
+            </div>
           </Link>
         ) : (
             <div className="flex items-center gap-4">
                 <Skeleton className="h-10 w-10 rounded-full" />
-                <Skeleton className="h-6 w-32" />
+                <div className="space-y-1">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                </div>
             </div>
         )}
       </header>

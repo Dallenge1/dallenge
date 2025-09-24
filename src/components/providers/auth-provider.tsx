@@ -70,8 +70,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
       if (user) {
-        // We don't create user here anymore on just auth state change,
-        // creation is handled explicitly on sign up.
         setUser(user);
       } else {
         setUser(null);
@@ -98,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const updatedUser = { ...userCredential.user, displayName, photoURL: defaultAvatarUrl };
       await createUserInFirestore(updatedUser as User, referralId);
 
-      setUser(updatedUser);
+      setUser(authInstance.currentUser); // Use the fresh user from auth
       return userCredential;
     } finally {
       setLoading(false);
@@ -109,7 +107,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(true);
     try {
         const userCredential = await signInWithEmailAndPassword(authInstance, email, pass);
-        // Don't create user on sign in, only sign up.
         return userCredential;
     } finally {
         setLoading(false);
@@ -149,7 +146,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
   
     // Update comments
-    // This is computationally expensive. For a real-world app, this might be better handled by a cloud function.
     const allPostsQuery = query(collection(db, 'posts'));
     const allPostsSnapshot = await getDocs(allPostsQuery);
   
@@ -157,8 +153,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const comments = postDoc.data().comments || [];
        let commentsUpdated = false;
       const updatedComments = comments.map((comment: any) => {
-        // This relies on having stored authorId in comment objects. 
-        // If not, this part needs to be adapted. Assuming authorId is stored.
         if (comment.authorId === userId) {
           commentsUpdated = true;
           return {...comment, authorName: updateData.authorName ?? comment.authorName, authorAvatarUrl: updateData.authorAvatarUrl ?? comment.authorAvatarUrl};
@@ -191,7 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const photoURL = await getDownloadURL(snapshot.ref);
 
       await updateProfile(user, { photoURL });
-      setUser({ ...user, photoURL });
+      setUser(authInstance.currentUser);
       
       const userDocRef = doc(db, "users", user.uid);
       await setDoc(userDocRef, { photoURL: photoURL }, { merge: true });
@@ -219,12 +213,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Update Firebase Auth profile
         if (displayName !== user.displayName) {
             await updateProfile(user, { displayName });
-            setUser({ ...user, displayName });
         }
 
         // Update Firestore 'users' collection
         const userDocRef = doc(db, "users", user.uid);
-        // Ensure all data from the form is included
         await setDoc(userDocRef, { 
             displayName,
             bio: profileData.bio,
@@ -235,6 +227,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if(displayName !== user.displayName){
            await updateAllUserGeneratedContent(user.uid, { authorName: displayName });
         }
+        
+        // Refresh user state from auth to ensure it's the latest object
+        setUser(authInstance.currentUser);
 
     } catch (error) {
         console.error("Error updating user profile:", error);

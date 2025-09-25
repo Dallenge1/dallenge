@@ -196,12 +196,18 @@ export async function addComment(
   }
 }
 
-export async function acceptChallenge(postId: string, userId: string) {
+export async function acceptChallenge(postId: string, userId: string, willAccept: boolean) {
   try {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
-      challengeAcceptedBy: arrayUnion(userId),
-    });
+    if (willAccept) {
+      await updateDoc(postRef, {
+        challengeAcceptedBy: arrayUnion(userId),
+      });
+    } else {
+       await updateDoc(postRef, {
+        challengeAcceptedBy: arrayRemove(userId),
+      });
+    }
     revalidatePath('/feed');
   } catch (error) {
     console.error('Error accepting challenge:', error);

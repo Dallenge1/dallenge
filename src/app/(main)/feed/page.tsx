@@ -390,9 +390,14 @@ export default function FeedPage() {
     }
   };
 
-  const handleAcceptChallenge = (postId: string) => {
+  const handleAcceptChallenge = (postId: string, force?: 'open' | 'close') => {
     if (!user) return;
-    startTransition(() => acceptChallenge(postId, user.uid).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to accept challenge.'})));
+    const currentStatus = post.challengeAcceptedBy?.includes(user.uid);
+    let newStatus = !currentStatus;
+    if(force === 'open') newStatus = true;
+    if(force === 'close') newStatus = false;
+    
+    startTransition(() => acceptChallenge(postId, user.uid, newStatus).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Failed to accept challenge.'})));
   };
 
   const handleReplyToChallenge = (postId: string) => {
@@ -560,7 +565,7 @@ export default function FeedPage() {
           <Button variant="ghost" className="flex-1" onClick={() => toggleCommentBox(post.id)} disabled={!user}><MessageCircle className="mr-2 h-4 w-4" />Comment ({post.comments.length})</Button>
           {post.type === 'challenge' && user && user.uid !== post.authorId ? (
             <>
-              <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id)} disabled={isPending || hasAcceptedChallenge || challengeHasEnded}>
+              <Button variant="ghost" className="flex-1" onClick={() => handleAcceptChallenge(post.id, undefined)} disabled={isPending || challengeHasEnded}>
                 {hasAcceptedChallenge ? <><CheckCircle className="mr-2 h-4 w-4 text-green-500"/>Accepted</> : <><Trophy className="mr-2 h-4 w-4"/>Accept</>}
               </Button>
               <Button variant="ghost" className="flex-1" onClick={() => handleShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>
@@ -586,7 +591,7 @@ export default function FeedPage() {
 
         {hasAcceptedChallenge && !challengeHasEnded && (
            <CardContent className="p-4 border-t bg-muted/50 relative">
-             <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => handleAcceptChallenge(post.id)}>
+             <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => handleAcceptChallenge(post.id, 'close')}>
                 <X className="h-4 w-4" />
              </Button>
              <div className="flex gap-4 pt-4">

@@ -17,7 +17,7 @@ import {
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment, Timestamp, runTransaction } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment, Timestamp, runTransaction, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -57,17 +57,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const createUserInFirestore = async (user: User, referralCode?: string) => {
     const userRef = doc(db, 'users', user.uid);
     const referrerRef = referralCode ? doc(db, 'users', referralCode) : null;
+    const referralsCollectionRef = collection(db, 'referrals');
   
     try {
       await runTransaction(db, async (transaction) => {
         const docSnap = await transaction.get(userRef);
         if (docSnap.exists()) {
-          // If the user document already exists, we might just need to update it
-          // or handle a re-authentication scenario. For now, we'll just return.
           return;
         }
   
-        // 1. Create the new user's document
+        // 1. Create the new user's document with 100 starting coins
         transaction.set(userRef, {
           displayName: user.displayName,
           email: user.email,
@@ -82,14 +81,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           lastSeen: serverTimestamp(),
         });
   
-        // 2. If a valid referrer exists, credit them
-        if (referrerRef) {
+        // 2. If a valid referral code was used, process the referral
+        if (referrerRef && referrerRef.id !== user.uid) {
           const referrerSnap = await transaction.get(referrerRef);
           if (referrerSnap.exists()) {
-            // Give the referrer their bonus coins
-            transaction.update(referrerRef, { coins: increment(1000) });
+            const coinsToAward = 1000;
+            
+            // 2a. Log the referral event in the 'referrals' collection
+            const newReferralRef = doc(referralsCollectionRef); // Create a new doc reference
+            transaction.set(newReferralRef, {
+              referrerId: referrerRef.id,
+              referredUserId: user.uid,
+              timestamp: serverTimestamp(),
+              coinsAwarded: coinsToAward
+            });
+
+            // 2b. Award the referrer their bonus coins
+            transaction.update(referrerRef, { coins: increment(coinsToAward) });
           } else {
-            // Handle case where referral code is invalid, maybe log it
             console.warn(`Referrer with code ${referralCode} not found.`);
           }
         }

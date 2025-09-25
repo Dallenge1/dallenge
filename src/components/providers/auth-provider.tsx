@@ -12,6 +12,7 @@ import {
   updateProfile,
   signInWithPopup,
   getAuth,
+  deleteUser,
 } from 'firebase/auth';
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -29,6 +30,7 @@ interface AuthContextType {
   logOut: () => Promise<any>;
   updateUserPhoto: (file: File | Blob) => Promise<void>;
   updateUserProfile: (data: {displayName: string, bio?: string, dob?: Date, phone?: string}) => Promise<void>;
+  deleteCurrentUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -166,6 +168,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
     }
   };
+
+  const deleteCurrentUser = async () => {
+    if (!user) throw new Error("No user is logged in to delete.");
+    setLoading(true);
+    try {
+        await deleteUser(user);
+        setUser(null);
+    } catch(error) {
+        console.error("Error deleting user from Firebase Auth:", error);
+        throw error;
+    } finally {
+        setLoading(false);
+    }
+  }
   
   const updateAllUserGeneratedContent = async (userId: string, updateData: {authorAvatarUrl?: string, authorName?: string}) => {
     const batch = writeBatch(db);
@@ -280,6 +296,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     logOut,
     updateUserPhoto,
     updateUserProfile,
+    deleteCurrentUser,
   };
 
   if (loading && !user) {

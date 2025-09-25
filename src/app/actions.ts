@@ -475,3 +475,62 @@ export async function markActivityAsRead(userId: string, activityId: string) {
         // Do not throw, not a critical failure
     }
 }
+
+export async function deleteUserAccount(userId: string) {
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Delete all posts by the user
+        const postsQuery = query(collection(db, 'posts'), where('authorId', '==', userId));
+        const postsSnap = await getDocs(postsQuery);
+        postsSnap.forEach(doc => batch.delete(doc.ref));
+
+        // 2. Delete all activity notifications sent by the user from other users' feeds
+        // This is complex, so we will skip for now to avoid performance issues on large dbs
+        // A better approach would be a Cloud Function triggered on user deletion.
+
+        // 3. Remove user from followers/following lists of other users
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.data();
+
+        if (userData) {
+            const followers = userData.followers || [];
+            const following = userData.following || [];
+            for (const followerId of followers) {
+                const followerRef = doc(db, 'users', followerId);
+                batch.update(followerRef, { following: arrayRemove(userId) });
+            }
+            for (const followingId of following) {
+                const followingRef = doc(db, 'users', followingId);
+                batch.update(followingRef, { followers: arrayRemove(userId) });
+            }
+        }
+        
+        // 4. Delete all comments by the user (by iterating all posts)
+        const allPostsQuery = query(collection(db, 'posts'));
+        const allPostsSnapshot = await getDocs(allPostsQuery);
+        allPostsSnapshot.forEach(postDoc => {
+            const comments = postDoc.data().comments?.filter((c: any) => c.authorId !== userId);
+            batch.update(postDoc.ref, { comments: comments });
+             const likes = postDoc.data().likes?.filter((likeId: string) => likeId !== userId);
+            batch.update(postDoc.ref, { likes: likes });
+        });
+
+        // 5. Delete the user's document from 'users' collection
+        batch.delete(userRef);
+
+        await batch.commit();
+
+        // 6. Delete user from Firebase Auth (This should be called from the client)
+        // We will trigger this via the auth provider on the client
+        
+        revalidatePath('/feed');
+        revalidatePath('/leaderboard');
+        revalidatePath('/users/all');
+
+    } catch (error) {
+        console.error("Error deleting user account data:", error);
+        throw new Error("Failed to delete user account data.");
+    }
+}

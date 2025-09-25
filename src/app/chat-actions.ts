@@ -15,6 +15,8 @@ import {
   where,
   getDocs,
   increment,
+  deleteDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -139,5 +141,52 @@ export async function markChatAsRead(chatId: string, userId: string) {
     } catch (error) {
         console.error('Error marking chat as read:', error);
         // We don't throw here, as it's not critical if this fails
+    }
+}
+
+
+export async function unsendMessage(chatId: string, messageId: string, currentUserId: string) {
+    try {
+        const messageRef = doc(db, 'chats', chatId, 'messages', messageId);
+        const messageSnap = await getDoc(messageRef);
+
+        if (!messageSnap.exists()) {
+            throw new Error("Message not found.");
+        }
+
+        if (messageSnap.data().senderId !== currentUserId) {
+            throw new Error("You can only delete your own messages.");
+        }
+
+        await deleteDoc(messageRef);
+        
+        revalidatePath(`/chat/${chatId}`);
+    } catch(error) {
+        console.error("Error unsending message:", error);
+        if (error instanceof Error) throw error;
+        throw new Error("Failed to unsend message.");
+    }
+}
+
+export async function deleteChat(chatId: string) {
+    try {
+        const chatRef = doc(db, 'chats', chatId);
+        const messagesCol = collection(db, 'chats', chatId, 'messages');
+
+        // Delete all messages in the subcollection
+        const messagesSnap = await getDocs(messagesCol);
+        const batch = writeBatch(db);
+        messagesSnap.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        // Delete the chat document itself
+        await deleteDoc(chatRef);
+
+        revalidatePath('/chat');
+    } catch (error) {
+        console.error("Error deleting chat:", error);
+        throw new Error("Failed to delete chat.");
     }
 }

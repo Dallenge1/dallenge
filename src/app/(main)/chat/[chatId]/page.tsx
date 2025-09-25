@@ -18,12 +18,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, ArrowLeft } from 'lucide-react';
+import { Send, ArrowLeft, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { sendMessage, markChatAsRead } from '@/app/chat-actions';
+import { sendMessage, markChatAsRead, unsendMessage } from '@/app/chat-actions';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 type Message = {
   id: string;
@@ -140,6 +141,24 @@ export default function ChatPage() {
     });
   };
 
+   const handleUnsendMessage = (messageId: string) => {
+    if (!currentUser) return;
+    startTransition(async () => {
+      try {
+        await unsendMessage(chatId, messageId, currentUser.uid);
+        toast({
+          title: 'Message Deleted',
+        });
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Could not delete message.',
+        });
+      }
+    });
+  };
+
   const renderPresence = () => {
     if (!otherUser) return null;
     if (otherUser.status === 'online') {
@@ -196,13 +215,27 @@ export default function ChatPage() {
             return (
               <div
                 key={msg.id}
-                className={cn('flex items-end gap-2', isCurrentUser && 'justify-end')}
+                className={cn('flex items-center gap-2 group', isCurrentUser && 'justify-end')}
               >
                 {!isCurrentUser && otherUser && (
-                   <Avatar className="h-8 w-8">
+                   <Avatar className="h-8 w-8 self-end">
                      <AvatarImage src={otherUser.photoURL} />
                      <AvatarFallback>{otherUser.displayName.charAt(0)}</AvatarFallback>
                    </Avatar>
+                )}
+                {isCurrentUser && (
+                   <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreHorizontal className="h-4 w-4" />
+                         </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleUnsendMessage(msg.id)} className="text-destructive">
+                           <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                   </DropdownMenu>
                 )}
                 <div
                   className={cn(
@@ -215,7 +248,7 @@ export default function ChatPage() {
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
                  {isCurrentUser && (
-                   <Avatar className="h-8 w-8">
+                   <Avatar className="h-8 w-8 self-end">
                      <AvatarImage src={currentUser.photoURL ?? undefined} />
                      <AvatarFallback>{currentUser.displayName?.charAt(0)}</AvatarFallback>
                    </Avatar>

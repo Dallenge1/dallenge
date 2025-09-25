@@ -17,7 +17,7 @@ import {
 import { auth as firebaseAuth, googleProvider, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Skeleton } from '../ui/skeleton';
-import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, setDoc, getDoc, serverTimestamp, increment, Timestamp, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -55,10 +55,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const createUserInFirestore = async (user: User, referralId: string | null = null) => {
-      const userRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(userRef);
-      if (!docSnap.exists()) {
-        await setDoc(userRef, {
+    const userRef = doc(db, 'users', user.uid);
+    const referrerRef = referralId ? doc(db, 'users', referralId) : null;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const docSnap = await transaction.get(userRef);
+        if (docSnap.exists()) {
+          return; // User already exists, do nothing.
+        }
+
+        // Set the new user's document with initial coins
+        transaction.set(userRef, {
             displayName: user.displayName,
             email: user.email,
             photoURL: user.photoURL,
@@ -66,24 +74,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             uid: user.uid,
             followers: [],
             following: [],
-            coins: 100, // Initial coins for new user
+            coins: 100, // All new users start with 100 coins
             inventory: [],
             status: 'online',
             lastSeen: serverTimestamp(),
         }, { merge: true });
 
-        // If there is a referral, give the referrer coins
-        if (referralId) {
-            const referrerRef = doc(db, 'users', referralId);
-            const referrerSnap = await getDoc(referrerRef);
-            if (referrerSnap.exists()) {
-                await setDoc(referrerRef, {
-                    coins: increment(1000)
-                }, { merge: true });
-            }
+        // If there's a valid referrer, increment their coins
+        if (referrerRef) {
+          const referrerSnap = await transaction.get(referrerRef);
+          if (referrerSnap.exists()) {
+            transaction.update(referrerRef, { coins: increment(1000) });
+          }
         }
-      }
-  }
+      });
+    } catch (e) {
+      console.error("Transaction failed: ", e);
+      throw new Error("Failed to create user account in database.");
+    }
+}
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
@@ -327,3 +337,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

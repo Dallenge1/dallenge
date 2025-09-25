@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea';
 import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins, Video, Clock, Lock } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { createPost, likePost, addComment, acceptChallenge, replyToChallenge, deletePost, addCoin } from '@/app/actions';
+import { createPost, likePost, addComment, acceptChallenge, replyToChallenge, deletePost, addCoin, likeComment } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import {
   collection,
@@ -41,11 +41,14 @@ import { useCountdown } from '@/hooks/use-countdown';
 import { Input } from '@/components/ui/input';
 import InviteFriendsDialog, { type FollowingUser } from './invite-friends-dialog';
 
-type CommentData = {
+export type CommentData = {
+  id: string; // Unique ID for the comment, can be timestamp in ms
+  authorId: string;
   authorName: string;
   authorAvatarUrl: string;
   content: string;
   timestamp: Timestamp;
+  likes: string[];
 };
 
 type Post = {
@@ -383,13 +386,28 @@ export default function FeedPage() {
     if (!commentContent.trim() || !user) return;
     startTransition(async () => {
         try {
-            await addComment(postId, { authorName: user.displayName || 'Anonymous', authorAvatarUrl: user.photoURL || '', content: commentContent });
+            await addComment(postId, {
+              authorId: user.uid, 
+              authorName: user.displayName || 'Anonymous', 
+              authorAvatarUrl: user.photoURL || '', 
+              content: commentContent 
+            });
             setCommentContent('');
             setActiveCommentBox(null);
             toast({ title: 'Success', description: 'Your comment has been added.' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to add comment.' });
         }
+    });
+  };
+  
+  const handleLikeComment = (postId: string, commentId: string) => {
+    if (!user) return;
+    startTransition(() => {
+      likeComment(postId, commentId, user.uid).catch((e) => {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to like comment.' });
+      });
     });
   };
 
@@ -604,7 +622,7 @@ export default function FeedPage() {
                 <div className="flex justify-end"><Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>{isPending ? 'Commenting...' : 'Comment'}</Button></div>
               </div>
             </div>
-            {post.comments.length > 0 && (<div className="mt-4 space-y-4">{post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (<Comment key={index} comment={comment} />))}</div>)}
+            {post.comments.length > 0 && (<div className="mt-4 space-y-4">{post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (<Comment key={comment.id} comment={comment} currentUser={user} onLikeComment={() => handleLikeComment(post.id, comment.id)} isPending={isPending} />))}</div>)}
           </CardContent>
         )}
 
@@ -667,6 +685,7 @@ export default function FeedPage() {
                               commentContent={activeCommentBox === reply.id ? commentContent : ''}
                               onCommentContentChange={(text) => activeCommentBox === reply.id && setCommentContent(text)}
                               onCommentSubmit={() => handleCommentSubmit(reply.id)}
+                              onLikeComment={handleLikeComment}
                               onCloseCommentBox={() => setActiveCommentBox(null)}
                               allComments={reply.comments}
                           />
@@ -796,5 +815,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
-    

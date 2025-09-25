@@ -106,59 +106,33 @@ export async function addCoin(postId: string, userId: string) {
   const postRef = doc(db, 'posts', postId);
 
   try {
-    await runTransaction(db, async (transaction) => {
-      const postSnap = await transaction.get(postRef);
-      if (!postSnap.exists()) {
-        throw new Error("Post does not exist!");
-      }
-
-      const postData = postSnap.data();
-      const authorId = postData.authorId;
-
-      if (!authorId) {
-        throw new Error("Post author not found!");
-      }
-      
-      if (authorId === userId) {
-        console.log("User cannot give a coin to their own post.");
-        return; 
-      }
-
-      const authorRef = doc(db, 'users', authorId);
-      const authorSnap = await transaction.get(authorRef);
-      if (!authorSnap.exists()) {
-          throw new Error("Post author's user profile not found!");
-      }
-
-      const authorData = authorSnap.data();
-      const currentAuthorCoins = authorData.coins || 0;
-
-      const postCoins = postData.coins || [];
-      const isCoinGiven = postCoins.includes(userId);
-      
-      let newAuthorCoins;
-
-      if (isCoinGiven) {
-        // User is taking back their coin
-        transaction.update(postRef, { coins: arrayRemove(userId) });
-        newAuthorCoins = currentAuthorCoins - 1;
-      } else {
-        // User is giving a coin for the first time
-        transaction.update(postRef, { coins: arrayUnion(userId) });
-        newAuthorCoins = currentAuthorCoins + 1;
-      }
-      
-      transaction.update(authorRef, { coins: newAuthorCoins < 0 ? 0 : newAuthorCoins });
-    });
-
     const postSnap = await getDoc(postRef);
-    if(postSnap.exists()) {
-        const authorId = postSnap.data().authorId;
-        if (authorId) {
-            revalidatePath(`/users/${authorId}`);
-        }
+    if (!postSnap.exists()) {
+      throw new Error("Post does not exist!");
     }
+    const postData = postSnap.data();
+    const authorId = postData.authorId;
+
+    if (!authorId) {
+      throw new Error("Post author not found!");
+    }
+    
+    if (authorId === userId) {
+      console.log("User cannot give a coin to their own post.");
+      return; 
+    }
+
+    const postCoins = postData.coins || [];
+    if (postCoins.includes(userId)) {
+      // User is taking back their coin
+      await updateDoc(postRef, { coins: arrayRemove(userId) });
+    } else {
+      // User is giving a coin for the first time
+      await updateDoc(postRef, { coins: arrayUnion(userId) });
+    }
+
     revalidatePath('/feed');
+    revalidatePath(`/users/${authorId}`);
     revalidatePath('/leaderboard');
 
   } catch (error) {
@@ -174,6 +148,7 @@ export async function addCoin(postId: string, userId: string) {
 export async function addComment(
   postId: string,
   comment: {
+    authorId: string;
     authorName: string;
     authorAvatarUrl: string;
     content: string;
@@ -187,11 +162,15 @@ export async function addComment(
         authorId = postSnap.data().authorId;
     }
 
+    const newComment = {
+      ...comment,
+      id: new Date().getTime().toString(), // Using timestamp as a unique ID
+      timestamp: Timestamp.now(),
+      likes: [],
+    };
+
     await updateDoc(postRef, {
-      comments: arrayUnion({
-        ...comment,
-        timestamp: Timestamp.now(),
-      }),
+      comments: arrayUnion(newComment),
     });
     revalidatePath('/feed');
     if (authorId) {
@@ -202,6 +181,47 @@ export async function addComment(
     throw new Error('Failed to add comment.');
   }
 }
+
+export async function likeComment(postId: string, commentId: string, userId: string) {
+  const postRef = doc(db, 'posts', postId);
+  try {
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) {
+      throw new Error("Post not found");
+    }
+
+    const postData = postSnap.data();
+    const comments = postData.comments || [];
+    let commentFound = false;
+
+    const updatedComments = comments.map((comment: any) => {
+      if (comment.id === commentId) {
+        commentFound = true;
+        const likes = comment.likes || [];
+        if (likes.includes(userId)) {
+          // Unlike
+          return { ...comment, likes: likes.filter((id: string) => id !== userId) };
+        } else {
+          // Like
+          return { ...comment, likes: [...likes, userId] };
+        }
+      }
+      return comment;
+    });
+
+    if (!commentFound) {
+      throw new Error("Comment not found");
+    }
+
+    await updateDoc(postRef, { comments: updatedComments });
+    revalidatePath(`/feed`);
+    revalidatePath(`/users/${postData.authorId}`);
+  } catch (error) {
+    console.error("Error liking comment:", error);
+    throw new Error("Failed to like comment.");
+  }
+}
+
 
 export async function acceptChallenge(postId: string, userId: string, willAccept: boolean) {
   try {

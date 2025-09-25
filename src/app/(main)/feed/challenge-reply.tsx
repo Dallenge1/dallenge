@@ -18,14 +18,7 @@ import { Coins, MessageCircle, MoreHorizontal, Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import Comment from './comment';
-
-
-type CommentData = {
-  authorName: string;
-  authorAvatarUrl: string;
-  content: string;
-  timestamp: Timestamp;
-};
+import { CommentData } from './page';
 
 type Post = {
   id: string;
@@ -54,6 +47,7 @@ type ChallengeReplyProps = {
   onCommentSubmit: () => void;
   onCloseCommentBox: () => void;
   allComments: CommentData[];
+  onLikeComment: (postId: string, commentId: string) => void;
 };
 
 export default function ChallengeReply({ 
@@ -69,7 +63,8 @@ export default function ChallengeReply({
     onCommentContentChange,
     onCommentSubmit,
     onCloseCommentBox,
-    allComments
+    allComments,
+    onLikeComment,
 }: ChallengeReplyProps) {
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,7 +204,7 @@ export default function ChallengeReply({
           {comments.length > 0 && (
             <div className="mt-4 space-y-4">
               {comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (
-                <Comment key={index} comment={comment} />
+                <Comment key={comment.id} comment={comment} currentUser={currentUser} onLikeComment={() => onLikeComment(postId, comment.id)} isPending={isPending} />
               ))}
             </div>
           )}

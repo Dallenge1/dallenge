@@ -2,19 +2,24 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
+import { User } from "firebase/auth";
 import { Timestamp } from "firebase/firestore";
+import { Heart } from "lucide-react";
+import { CommentData } from "./page";
 
 type CommentProps = {
-  comment: {
-    authorName: string;
-    authorAvatarUrl: string;
-    content: string;
-    timestamp: Timestamp;
-  };
+  comment: CommentData;
+  currentUser: User | null;
+  onLikeComment: () => void;
+  isPending: boolean;
 };
 
-export default function Comment({ comment }: CommentProps) {
+export default function Comment({ comment, currentUser, onLikeComment, isPending }: CommentProps) {
+  const hasLiked = currentUser && comment.likes?.includes(currentUser.uid);
+
   return (
     <div className="flex items-start gap-3">
       <Avatar className="h-9 w-9">
@@ -31,6 +36,14 @@ export default function Comment({ comment }: CommentProps) {
           </p>
         </div>
         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{comment.content}</p>
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-6 w-6 group" onClick={onLikeComment} disabled={isPending || !currentUser}>
+                <Heart className={cn('h-3.5 w-3.5 group-hover:text-red-500', hasLiked && 'fill-red-500 text-red-500')} />
+            </Button>
+            {comment.likes?.length > 0 && (
+                <span className="text-xs text-muted-foreground">{comment.likes.length}</span>
+            )}
+        </div>
       </div>
     </div>
   );

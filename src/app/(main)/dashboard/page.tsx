@@ -16,6 +16,7 @@ import { doc, onSnapshot, collection, query, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase';
 import { Award, Coins, Users, Trophy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import RecentActivity from './recent-activity';
 
 type UserStats = {
   coins: number;
@@ -146,30 +147,34 @@ export default function DashboardPage() {
             </Card>
         ))}
       </div>
-
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Explore Features</h2>
-        <p className="text-muted-foreground">
-            Dive into the core experiences of Dallenge.
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {featureLinks.map((feature) => (
-          <Link href={feature.href} key={feature.href}>
-            <Card className="group h-full transition-all duration-300 hover:border-primary hover:shadow-lg hover:-translate-y-1">
-              <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-                  <div className="mb-4 rounded-full bg-primary/10 p-3 ring-2 ring-primary/20 transition-all group-hover:scale-110 group-hover:bg-primary/20">
-                    <feature.icon className="h-8 w-8 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg mb-1 group-hover:text-primary">
-                    {feature.label}
-                  </CardTitle>
-                  <CardDescription className="text-xs">{feature.description}</CardDescription>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+      
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+            <h2 className="text-2xl font-bold tracking-tight">Explore Features</h2>
+            <p className="text-muted-foreground mb-4">
+                Dive into the core experiences of Dallenge.
+            </p>
+            <div className="grid gap-6 md:grid-cols-2">
+                {featureLinks.map((feature) => (
+                <Link href={feature.href} key={feature.href}>
+                    <Card className="group h-full transition-all duration-300 hover:border-primary hover:shadow-lg hover:-translate-y-1">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+                        <div className="mb-4 rounded-full bg-primary/10 p-3 ring-2 ring-primary/20 transition-all group-hover:scale-110 group-hover:bg-primary/20">
+                            <feature.icon className="h-8 w-8 text-primary" />
+                        </div>
+                        <CardTitle className="text-lg mb-1 group-hover:text-primary">
+                            {feature.label}
+                        </CardTitle>
+                        <CardDescription className="text-xs">{feature.description}</CardDescription>
+                    </CardContent>
+                    </Card>
+                </Link>
+                ))}
+            </div>
+        </div>
+        <div className="lg:col-span-1">
+            <RecentActivity />
+        </div>
       </div>
     </div>
   );

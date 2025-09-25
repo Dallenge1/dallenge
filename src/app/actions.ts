@@ -19,6 +19,21 @@ async function updateAllUserPosts(userId: string, newPhotoURL: string) {
   await batch.commit();
 }
 
+const createActivity = async (userId: string, activityData: Omit<any, 'timestamp' | 'isRead'>) => {
+    if (userId === activityData.fromUserId) return; // Don't create activity for your own actions
+    try {
+        const activityCollection = collection(db, 'users', userId, 'activity');
+        await addDoc(activityCollection, {
+            ...activityData,
+            timestamp: serverTimestamp(),
+            isRead: false,
+        });
+    } catch (error) {
+        console.error('Error creating activity:', error);
+        // Don't throw, as this is a non-critical background task
+    }
+};
+
 export async function createPost(
   authorId: string,
   authorName: string,
@@ -82,6 +97,12 @@ export async function likePost(postId: string, userId: string) {
       const postData = postSnap.data();
       const likes = postData.likes || [];
       const authorId = postData.authorId;
+
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) throw new Error('Liking user not found');
+      const likingUser = userSnap.data();
+
       if (likes.includes(userId)) {
         await updateDoc(postRef, {
           likes: arrayRemove(userId),
@@ -90,8 +111,17 @@ export async function likePost(postId: string, userId: string) {
         await updateDoc(postRef, {
           likes: arrayUnion(userId),
         });
+        await createActivity(authorId, {
+            type: 'LIKE',
+            fromUserId: userId,
+            fromUserName: likingUser.displayName,
+            fromUserAvatarUrl: likingUser.photoURL,
+            postId: postId,
+            postContent: postData.content?.substring(0, 50) || postData.title,
+        });
       }
       revalidatePath('/feed');
+      revalidatePath('/dashboard');
       if (authorId) {
         revalidatePath(`/users/${authorId}`);
       }
@@ -121,6 +151,11 @@ export async function addCoin(postId: string, userId: string) {
       console.log("User cannot give a coin to their own post.");
       return; 
     }
+    
+    const givingUserRef = doc(db, 'users', userId);
+    const givingUserSnap = await getDoc(givingUserRef);
+    if (!givingUserSnap.exists()) throw new Error('Giving user not found');
+    const givingUserData = givingUserSnap.data();
 
     const postCoins = postData.coins || [];
     if (postCoins.includes(userId)) {
@@ -129,11 +164,20 @@ export async function addCoin(postId: string, userId: string) {
     } else {
       // User is giving a coin for the first time
       await updateDoc(postRef, { coins: arrayUnion(userId) });
+      await createActivity(authorId, {
+          type: 'COIN_RECEIVED',
+          fromUserId: userId,
+          fromUserName: givingUserData.displayName,
+          fromUserAvatarUrl: givingUserData.photoURL,
+          postId: postId,
+          postTitle: postData.title || postData.content?.substring(0, 50),
+      });
     }
 
     revalidatePath('/feed');
     revalidatePath(`/users/${authorId}`);
     revalidatePath('/leaderboard');
+    revalidatePath('/dashboard');
 
   } catch (error) {
     console.error('Error in addCoin transaction:', error);
@@ -157,9 +201,10 @@ export async function addComment(
   try {
     const postRef = doc(db, 'posts', postId);
     const postSnap = await getDoc(postRef);
-    let authorId;
+    let postData, authorId;
     if(postSnap.exists()) {
-        authorId = postSnap.data().authorId;
+        postData = postSnap.data();
+        authorId = postData.authorId;
     }
 
     const newComment = {
@@ -172,10 +217,23 @@ export async function addComment(
     await updateDoc(postRef, {
       comments: arrayUnion(newComment),
     });
-    revalidatePath('/feed');
+
     if (authorId) {
-      revalidatePath(`/users/${authorId}`);
+        await createActivity(authorId, {
+            type: 'NEW_COMMENT',
+            fromUserId: comment.authorId,
+            fromUserName: comment.authorName,
+            fromUserAvatarUrl: comment.authorAvatarUrl,
+            postId: postId,
+            postTitle: postData?.title || postData?.content?.substring(0, 50),
+            commentContent: comment.content.substring(0, 50),
+        });
+        revalidatePath(`/users/${authorId}`);
     }
+
+    revalidatePath('/feed');
+    revalidatePath('/dashboard');
+    
   } catch (error) {
     console.error('Error adding comment:', error);
     throw new Error('Failed to add comment.');
@@ -193,6 +251,7 @@ export async function likeComment(postId: string, commentId: string, userId: str
     const postData = postSnap.data();
     const comments = postData.comments || [];
     let commentFound = false;
+    let targetComment: any = null;
 
     const updatedComments = comments.map((comment: any) => {
       if (comment.id === commentId) {
@@ -200,11 +259,12 @@ export async function likeComment(postId: string, commentId: string, userId: str
         const likes = comment.likes || [];
         if (likes.includes(userId)) {
           // Unlike
-          return { ...comment, likes: likes.filter((id: string) => id !== userId) };
+          targetComment = { ...comment, likes: likes.filter((id: string) => id !== userId) };
         } else {
           // Like
-          return { ...comment, likes: [...likes, userId] };
+          targetComment = { ...comment, likes: [...likes, userId] };
         }
+        return targetComment;
       }
       return comment;
     });
@@ -214,8 +274,27 @@ export async function likeComment(postId: string, commentId: string, userId: str
     }
 
     await updateDoc(postRef, { comments: updatedComments });
+    
+    // Create activity for the comment author if someone else liked it
+    if (targetComment && targetComment.authorId !== userId && !targetComment.likes.includes(userId)) {
+        const likingUserSnap = await getDoc(doc(db, 'users', userId));
+        if (likingUserSnap.exists()) {
+            const likingUser = likingUserSnap.data();
+            await createActivity(targetComment.authorId, {
+                type: 'COMMENT_LIKE',
+                fromUserId: userId,
+                fromUserName: likingUser.displayName,
+                fromUserAvatarUrl: likingUser.photoURL,
+                postId: postId,
+                commentContent: targetComment.content.substring(0, 50)
+            });
+        }
+    }
+
+
     revalidatePath(`/feed`);
     revalidatePath(`/users/${postData.authorId}`);
+    revalidatePath('/dashboard');
   } catch (error) {
     console.error("Error liking comment:", error);
     throw new Error("Failed to like comment.");
@@ -274,8 +353,21 @@ export async function replyToChallenge(
       challengeReplies: arrayUnion(replyPostRef.id),
     });
 
+     if (challengePostData && challengePostData.authorId) {
+        await createActivity(challengePostData.authorId, {
+            type: 'CHALLENGE_REPLY',
+            fromUserId: reply.authorId,
+            fromUserName: reply.authorName,
+            fromUserAvatarUrl: reply.authorAvatarUrl,
+            postId: challengePostId,
+            postTitle: challengePostData.title,
+            replyId: replyPostRef.id,
+        });
+    }
+
     revalidatePath('/feed');
     revalidatePath(`/users/${reply.authorId}`);
+    revalidatePath('/dashboard');
   } catch (error)
     {
     console.error('Error replying to challenge:', error);
@@ -318,5 +410,16 @@ export async function submitFeedback(data: {
     } catch (error) {
         console.error('Error submitting feedback:', error);
         throw new Error('Failed to submit feedback.');
+    }
+}
+
+export async function markActivityAsRead(userId: string, activityId: string) {
+    try {
+        const activityRef = doc(db, 'users', userId, 'activity', activityId);
+        await updateDoc(activityRef, { isRead: true });
+        revalidatePath('/dashboard');
+    } catch(error) {
+        console.error("Error marking activity as read", error);
+        // Do not throw, not a critical failure
     }
 }

@@ -17,6 +17,8 @@ import {
   increment,
   deleteDoc,
   writeBatch,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -147,6 +149,7 @@ export async function markChatAsRead(chatId: string, userId: string) {
 
 export async function unsendMessage(chatId: string, messageId: string, currentUserId: string) {
     try {
+        const chatRef = doc(db, 'chats', chatId);
         const messageRef = doc(db, 'chats', chatId, 'messages', messageId);
         const messageSnap = await getDoc(messageRef);
 
@@ -159,8 +162,33 @@ export async function unsendMessage(chatId: string, messageId: string, currentUs
         }
 
         await deleteDoc(messageRef);
+
+        // After deleting, find the new last message to update the chat preview
+        const messagesQuery = query(
+            collection(db, 'chats', chatId, 'messages'),
+            orderBy('timestamp', 'desc'),
+            limit(1)
+        );
+        
+        const newLastMessageSnap = await getDocs(messagesQuery);
+        if (!newLastMessageSnap.empty) {
+            const newLastMessage = newLastMessageSnap.docs[0].data();
+            await updateDoc(chatRef, {
+                lastMessage: newLastMessage.text,
+                lastMessageSenderId: newLastMessage.senderId,
+                lastMessageTimestamp: newLastMessage.timestamp,
+            });
+        } else {
+            // No messages left, so clear the preview
+            await updateDoc(chatRef, {
+                lastMessage: '',
+                lastMessageSenderId: '',
+                lastMessageTimestamp: serverTimestamp(), // Or use a specific value
+            });
+        }
         
         revalidatePath(`/chat/${chatId}`);
+        revalidatePath('/chat');
     } catch(error) {
         console.error("Error unsending message:", error);
         if (error instanceof Error) throw error;
@@ -179,10 +207,11 @@ export async function deleteChat(chatId: string) {
         messagesSnap.forEach(doc => {
             batch.delete(doc.ref);
         });
-        await batch.commit();
+        
+        // Also delete the chat document itself
+        batch.delete(chatRef);
 
-        // Delete the chat document itself
-        await deleteDoc(chatRef);
+        await batch.commit();
 
         revalidatePath('/chat');
     } catch (error) {

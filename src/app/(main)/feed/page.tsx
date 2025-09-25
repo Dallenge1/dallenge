@@ -392,6 +392,8 @@ export default function FeedPage() {
 
   const handleAcceptChallenge = (postId: string, force?: 'open' | 'close') => {
     if (!user) return;
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
     const currentStatus = post.challengeAcceptedBy?.includes(user.uid);
     let newStatus = !currentStatus;
     if(force === 'open') newStatus = true;

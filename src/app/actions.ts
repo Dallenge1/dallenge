@@ -83,6 +83,7 @@ export async function createPost(
 
     // If it's a private challenge, create notifications for invited users
     if (postType === 'challenge' && isPrivate && invitedUsers.length > 0) {
+      const postUrl = `/feed#${postRef.id}`;
       for (const invitedUserId of invitedUsers) {
         // Send an activity feed notification
         await createActivity(invitedUserId, {
@@ -97,8 +98,7 @@ export async function createPost(
         // Also send a direct message
         try {
             const chatId = await getOrCreateChat(authorId, invitedUserId);
-            const invitationMessage = `You've been invited to the challenge: "${title || 'Unnamed Challenge'}"! Join the fun.`;
-            // We send the message from the invited user to the creator to avoid self-notification
+            const invitationMessage = `You've been invited to the challenge: "${title || 'Unnamed Challenge'}"!\n\nJoin the fun here: ${process.env.NEXT_PUBLIC_APP_URL}${postUrl}`;
             await sendMessage(chatId, authorId, invitationMessage);
         } catch (chatError) {
             console.error(`Failed to send chat invite to ${invitedUserId}:`, chatError);
@@ -202,7 +202,7 @@ export async function addCoin(postId: string, userId: string) {
     });
 
     revalidatePath('/feed');
-    revalidatePath(`/users/${postData.authorId}`);
+    revalidatePath(`/users/${(await getDoc(postRef)).data()?.authorId}`);
     revalidatePath('/leaderboard');
     revalidatePath('/dashboard');
 
@@ -454,6 +454,8 @@ export async function markActivityAsRead(userId: string, activityId: string) {
         // Do not throw, not a critical failure
     }
 }
+
+    
 
     
 

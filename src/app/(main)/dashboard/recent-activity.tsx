@@ -20,11 +20,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { markActivityAsRead } from '@/app/actions';
-import { Coins, Heart, MessageCircle, UserPlus } from 'lucide-react';
+import { Coins, Heart, MessageCircle, UserPlus, Trophy } from 'lucide-react';
 
 type Activity = {
   id: string;
-  type: 'COIN_RECEIVED' | 'NEW_FOLLOWER' | 'NEW_COMMENT' | 'LIKE' | 'CHALLENGE_REPLY' | 'COMMENT_LIKE';
+  type: 'COIN_RECEIVED' | 'NEW_FOLLOWER' | 'NEW_COMMENT' | 'LIKE' | 'CHALLENGE_REPLY' | 'COMMENT_LIKE' | 'CHALLENGE_INVITE';
   fromUserId: string;
   fromUserName: string;
   fromUserAvatarUrl: string;
@@ -48,6 +48,8 @@ const ActivityIcon = ({ type }: { type: Activity['type'] }) => {
         case 'LIKE':
         case 'COMMENT_LIKE':
             return <Heart className="h-4 w-4 text-red-500" />;
+        case 'CHALLENGE_INVITE':
+            return <Trophy className="h-4 w-4 text-primary" />;
         default:
             return null;
     }
@@ -70,6 +72,8 @@ const ActivityItem = ({ activity, onRead }: { activity: Activity; onRead: (activ
                 return <>liked your post: <strong>{activity.postTitle}</strong></>;
             case 'COMMENT_LIKE':
                 return <>liked your comment: <em>"{activity.commentContent}"</em></>
+            case 'CHALLENGE_INVITE':
+                return <>invited you to the challenge: <strong>{activity.postTitle}</strong></>;
             default:
                 return null;
         }
@@ -179,3 +183,5 @@ export default function RecentActivity() {
     </Card>
   );
 }
+
+    

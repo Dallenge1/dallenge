@@ -78,7 +78,22 @@ export async function createPost(
       }
     }
 
-    await addDoc(collection(db, 'posts'), postData);
+    const postRef = await addDoc(collection(db, 'posts'), postData);
+
+    // If it's a private challenge, create notifications for invited users
+    if (postType === 'challenge' && isPrivate && invitedUsers.length > 0) {
+      for (const invitedUserId of invitedUsers) {
+        await createActivity(invitedUserId, {
+          type: 'CHALLENGE_INVITE',
+          fromUserId: authorId,
+          fromUserName: authorName,
+          fromUserAvatarUrl: authorAvatarUrl,
+          postId: postRef.id,
+          postTitle: title,
+        });
+      }
+    }
+
 
     revalidatePath('/feed');
     revalidatePath(`/users/${authorId}`);
@@ -423,3 +438,5 @@ export async function markActivityAsRead(userId: string, activityId: string) {
         // Do not throw, not a critical failure
     }
 }
+
+    

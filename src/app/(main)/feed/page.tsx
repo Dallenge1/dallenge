@@ -569,21 +569,27 @@ export default function FeedPage() {
         </CardFooter>
 
         {activeCommentBox === post.id && (
-          <CardContent className="p-4 border-t">
-              <div className="flex gap-4">
-                <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
-                <div className="w-full space-y-2">
-                  <Textarea placeholder="Write a comment..." value={commentContent} onChange={(e) => setCommentContent(e.target.value)} disabled={isPending}/>
-                  <div className="flex justify-end"><Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>{isPending ? 'Commenting...' : 'Comment'}</Button></div>
-                </div>
+          <CardContent className="p-4 border-t relative">
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => setActiveCommentBox(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+            <div className="flex gap-4 pt-4">
+              <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
+              <div className="w-full space-y-2">
+                <Textarea placeholder="Write a comment..." value={commentContent} onChange={(e) => setCommentContent(e.target.value)} disabled={isPending}/>
+                <div className="flex justify-end"><Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>{isPending ? 'Commenting...' : 'Comment'}</Button></div>
               </div>
+            </div>
             {post.comments.length > 0 && (<div className="mt-4 space-y-4">{post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (<Comment key={index} comment={comment} />))}</div>)}
           </CardContent>
         )}
 
         {hasAcceptedChallenge && !challengeHasEnded && (
-           <CardContent className="p-4 border-t bg-muted/50">
-             <div className="flex gap-4">
+           <CardContent className="p-4 border-t bg-muted/50 relative">
+             <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 z-10" onClick={() => handleAcceptChallenge(post.id)}>
+                <X className="h-4 w-4" />
+             </Button>
+             <div className="flex gap-4 pt-4">
                 <Avatar><AvatarImage src={user?.photoURL ?? undefined} alt="Your avatar" /><AvatarFallback>{user?.displayName?.charAt(0) ?? 'U'}</AvatarFallback></Avatar>
                 <div className="w-full space-y-2">
                   <Textarea placeholder="Post your reply to the challenge..." value={replyState.content} onChange={(e) => setReplyStates(prev => ({...prev, [post.id]: {...replyState, content: e.target.value}}))} disabled={isPending}/>

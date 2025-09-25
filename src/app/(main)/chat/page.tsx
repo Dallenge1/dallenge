@@ -214,7 +214,10 @@ export default function ChatsPage() {
           </div>
         ) : (
           <ul className="divide-y">
-            {chats.map((chat) => chat.otherUser && (
+            {chats.map((chat) => {
+              if (!chat.otherUser?.displayName) return null;
+
+              return (
               <li key={chat.id}>
                 <ContextMenu>
                     <ContextMenuTrigger>
@@ -229,7 +232,7 @@ export default function ChatsPage() {
                                 alt={chat.otherUser.displayName}
                             />
                             <AvatarFallback>
-                                {chat.otherUser.displayName.charAt(0)}
+                                {chat.otherUser.displayName?.charAt(0) ?? 'U'}
                             </AvatarFallback>
                             </Avatar>
                             {chat.otherUser.status === 'online' && (
@@ -265,7 +268,7 @@ export default function ChatsPage() {
                     </ContextMenuContent>
                 </ContextMenu>
               </li>
-            ))}
+            )})}
           </ul>
         )}
       </div>

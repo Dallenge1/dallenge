@@ -414,18 +414,31 @@ export async function deletePost(postId: string, authorId?: string) {
         // Delete the post itself
         batch.delete(postRef);
 
-        // Find all users who have activity related to this post and delete it
-        const allUsersQuery = query(collection(db, 'users'));
-        const allUsersSnap = await getDocs(allUsersQuery);
+        // Find all users who have an activity notification related to this post
+        const activityQuery = query(
+            collection(db, "activity"),
+            where('postId', '==', postId)
+        );
+        const activitySnap = await getDocs(activityQuery);
+        
+        activitySnap.forEach(activityDoc => {
+            const activityData = activityDoc.data();
+            const userActivityRef = doc(db, 'users', activityData.recipientId, 'activity', activityDoc.id);
+            batch.delete(userActivityRef);
+        });
 
-        for (const userDoc of allUsersSnap.docs) {
-            const activityQuery = query(
-                collection(db, 'users', userDoc.id, 'activity'),
-                where('postId', '==', postId)
-            );
-            const activitySnap = await getDocs(activityQuery);
-            activitySnap.forEach(activityDoc => {
-                batch.delete(activityDoc.ref);
+        // Also delete from the user-specific activity subcollections
+        const usersToUpdate = new Set<string>();
+        usersToUpdate.add(postData.authorId);
+        postData.likes?.forEach((id: string) => usersToUpdate.add(id));
+        postData.coins?.forEach((id: string) => usersToUpdate.add(id));
+        postData.comments?.forEach((c: any) => usersToUpdate.add(c.authorId));
+
+        for (const userId of Array.from(usersToUpdate)) {
+            const userActivityQuery = query(collection(db, 'users', userId, 'activity'), where('postId', '==', postId));
+            const userActivitySnap = await getDocs(userActivityQuery);
+            userActivitySnap.forEach(doc => {
+                batch.delete(doc.ref);
             });
         }
         
@@ -438,6 +451,7 @@ export async function deletePost(postId: string, authorId?: string) {
           revalidatePath(`/users/${currentAuthorId}`);
         }
         revalidatePath('/dashboard');
+        revalidatePath('/notifications');
 
     } catch (error) {
         console.error('Error deleting post:', error);
@@ -467,14 +481,9 @@ export async function markActivityAsRead(userId: string, activityId: string) {
         const activityRef = doc(db, 'users', userId, 'activity', activityId);
         await updateDoc(activityRef, { isRead: true });
         revalidatePath('/dashboard');
+        revalidatePath('/notifications');
     } catch(error) {
         console.error("Error marking activity as read", error);
         // Do not throw, not a critical failure
     }
 }
-
-    
-
-    
-
-    

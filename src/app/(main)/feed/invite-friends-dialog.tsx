@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,23 +59,31 @@ export default function InviteFriendsDialog({
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
-          const followingIds = userSnap.data().following || [];
+          const followingIds: string[] = userSnap.data().following || [];
           if (followingIds.length > 0) {
-            const userPromises = followingIds.map(async (id: string) => {
-              const followingUserRef = doc(db, 'users', id);
-              const followingUserSnap = await getDoc(followingUserRef);
-              if (followingUserSnap.exists()) {
-                const data = followingUserSnap.data();
-                return {
-                  id: followingUserSnap.id,
-                  displayName: data.displayName,
-                  photoURL: data.photoURL,
-                };
-              }
-              return null;
-            });
-            const users = (await Promise.all(userPromises)).filter(Boolean) as FollowingUser[];
-            setFollowing(users);
+            
+            // Firestore 'in' query is limited to 30 elements.
+            // We chunk the requests to handle more.
+            const chunks: string[][] = [];
+            for (let i = 0; i < followingIds.length; i += 30) {
+                chunks.push(followingIds.slice(i, i + 30));
+            }
+
+            const usersData: FollowingUser[] = [];
+            for (const chunk of chunks) {
+                if (chunk.length === 0) continue;
+                const q = query(collection(db, 'users'), where('uid', 'in', chunk));
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    usersData.push({
+                        id: doc.id,
+                        displayName: data.displayName,
+                        photoURL: data.photoURL,
+                    });
+                });
+            }
+            setFollowing(usersData);
           } else {
              setFollowing([]);
           }

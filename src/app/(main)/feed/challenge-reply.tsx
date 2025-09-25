@@ -14,7 +14,7 @@ import { Timestamp } from "firebase/firestore";
 import { User } from 'firebase/auth';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Coins, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react';
+import { Coins, MessageCircle, MoreHorizontal, Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import Comment from './comment';
@@ -52,6 +52,7 @@ type ChallengeReplyProps = {
   commentContent: string;
   onCommentContentChange: (text: string) => void;
   onCommentSubmit: () => void;
+  onCloseCommentBox: () => void;
   allComments: CommentData[];
 };
 
@@ -67,6 +68,7 @@ export default function ChallengeReply({
     commentContent,
     onCommentContentChange,
     onCommentSubmit,
+    onCloseCommentBox,
     allComments
 }: ChallengeReplyProps) {
   const [post, setPost] = useState<Post | null>(null);
@@ -181,8 +183,11 @@ export default function ChallengeReply({
             <Button variant="ghost" className="flex-1" onClick={() => onShare(post.id)}><Share2 className="mr-2 h-4 w-4" />Share</Button>
       </CardFooter>
       {isCommentBoxOpen && (
-        <CardContent className="p-4 border-t">
-          <div className="flex gap-4">
+        <CardContent className="p-4 border-t relative">
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={onCloseCommentBox}>
+              <X className="h-4 w-4" />
+            </Button>
+          <div className="flex gap-4 mt-4">
             <Avatar>
               <AvatarImage src={currentUser?.photoURL ?? undefined} alt="Your avatar" />
               <AvatarFallback>{currentUser?.displayName?.charAt(0) ?? 'U'}</AvatarFallback>

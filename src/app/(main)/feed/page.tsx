@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins, Video, Clock } from 'lucide-react';
+import { MessageCircle, Heart, Share2, CornerRightDown, ImageIcon, X, Loader2, Trophy, CheckCircle, Reply, MoreHorizontal, Coins, Video, Clock, Lock } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { createPost, likePost, addComment, acceptChallenge, replyToChallenge, deletePost, addCoin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,10 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
+  where,
+  getDocs,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -35,6 +39,7 @@ import ChallengeLeaderboard from './challenge-leaderboard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCountdown } from '@/hooks/use-countdown';
 import { Input } from '@/components/ui/input';
+import InviteFriendsDialog, { type FollowingUser } from './invite-friends-dialog';
 
 type CommentData = {
   authorName: string;
@@ -62,6 +67,8 @@ type Post = {
   originalChallengeId?: string;
   coins?: string[];
   challengeEndsAt?: Timestamp;
+  isPrivate?: boolean;
+  invitedUsers?: string[];
 };
 
 export default function FeedPage() {
@@ -83,8 +90,13 @@ export default function FeedPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [isChallenge, setIsChallenge] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [challengeTitle, setChallengeTitle] = useState('');
   const [challengeDuration, setChallengeDuration] = useState('8');
+  const [invitedUsers, setInvitedUsers] = useState<string[]>([]);
+  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+
   const [replyStates, setReplyStates] = useState<{[key: string]: {content: string, imageFile: File | null, imagePreview: string | null, videoFile: File | null, videoPreview: string | null}}>({});
   const replyImageInputRef = useRef<HTMLInputElement>(null);
   const replyVideoInputRef = useRef<HTMLInputElement>(null);
@@ -96,46 +108,97 @@ export default function FeedPage() {
 
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const postsData: Post[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        postsData.push({
-          id: doc.id,
-          authorId: data.authorId,
-          authorName: data.authorName,
-          authorAvatarUrl: data.authorAvatarUrl,
-          content: data.content,
-          timestamp: data.timestamp,
-          likes: data.likes || [],
-          comments: data.comments || [],
-          imageUrl: data.imageUrl,
-          videoUrl: data.videoUrl,
-          type: data.type || 'post',
-          title: data.title,
-          challengeAcceptedBy: data.challengeAcceptedBy || [],
-          challengeReplies: data.challengeReplies || [],
-          isChallengeReply: data.isChallengeReply || false,
-          originalChallengeId: data.originalChallengeId,
-          coins: data.coins || [],
-          challengeEndsAt: data.challengeEndsAt,
-        });
-      });
-      setPosts(postsData);
-      setLoading(false);
-    }, (error) => {
-        console.error("Error fetching posts:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to load feed. Check console for details.',
-        });
+    if (!user) {
         setLoading(false);
+        return;
+    }
+    // Query for public posts and challenges
+    const publicQuery = query(
+        collection(db, 'posts'),
+        where('isPrivate', '!=', true),
+        orderBy('isPrivate', 'asc'), // Firestore requires this orderBy when using !=
+        orderBy('timestamp', 'desc')
+    );
+
+    // Query for private challenges where current user is the author
+    const myPrivateChallengesQuery = query(
+        collection(db, 'posts'),
+        where('isPrivate', '==', true),
+        where('authorId', '==', user.uid)
+    );
+
+    // Query for private challenges where current user is invited
+    const invitedChallengesQuery = query(
+        collection(db, 'posts'),
+        where('isPrivate', '==', true),
+        where('invitedUsers', 'array-contains', user.uid)
+    );
+
+    const handleSnapshot = (querySnapshot: any, existingPosts: Map<string, Post>) => {
+        querySnapshot.forEach((doc: any) => {
+            const data = doc.data();
+            existingPosts.set(doc.id, {
+                id: doc.id,
+                ...data,
+                comments: data.comments || [],
+            } as Post);
+        });
+    };
+
+    const unsubscribePublic = onSnapshot(publicQuery, (snapshot) => {
+        setLoading(true);
+        Promise.all([
+            getDocs(myPrivateChallengesQuery),
+            getDocs(invitedChallengesQuery)
+        ]).then(([myPrivateSnapshot, invitedSnapshot]) => {
+            const allPosts = new Map<string, Post>();
+            handleSnapshot(snapshot, allPosts);
+            handleSnapshot(myPrivateSnapshot, allPosts);
+            handleSnapshot(invitedSnapshot, allPosts);
+            const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+            setPosts(sortedPosts);
+            setLoading(false);
+        });
     });
 
-    return () => unsubscribe();
-  }, [toast]);
+    const unsubscribeMyPrivate = onSnapshot(myPrivateChallengesQuery, (snapshot) => {
+        setLoading(true);
+        Promise.all([
+            getDocs(publicQuery),
+            getDocs(invitedChallengesQuery)
+        ]).then(([publicSnapshot, invitedSnapshot]) => {
+            const allPosts = new Map<string, Post>();
+            handleSnapshot(snapshot, allPosts);
+            handleSnapshot(publicSnapshot, allPosts);
+            handleSnapshot(invitedSnapshot, allPosts);
+            const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+            setPosts(sortedPosts);
+            setLoading(false);
+        });
+    });
+
+    const unsubscribeInvited = onSnapshot(invitedChallengesQuery, (snapshot) => {
+        setLoading(true);
+        Promise.all([
+            getDocs(publicQuery),
+            getDocs(myPrivateChallengesQuery)
+        ]).then(([publicSnapshot, myPrivateSnapshot]) => {
+            const allPosts = new Map<string, Post>();
+            handleSnapshot(snapshot, allPosts);
+            handleSnapshot(publicSnapshot, allPosts);
+            handleSnapshot(myPrivateSnapshot, allPosts);
+            const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+            setPosts(sortedPosts);
+            setLoading(false);
+        });
+    });
+
+    return () => {
+        unsubscribePublic();
+        unsubscribeMyPrivate();
+        unsubscribeInvited();
+    };
+}, [user]);
   
   useEffect(() => {
     if (loading || posts.length === 0) {
@@ -320,12 +383,16 @@ export default function FeedPage() {
           videoUrl,
           isChallenge ? 'challenge' : 'post',
           isChallenge ? parseInt(challengeDuration) : undefined,
-          isChallenge ? challengeTitle : undefined
+          isChallenge ? challengeTitle : undefined,
+          isChallenge ? isPrivate : false,
+          isChallenge && isPrivate ? invitedUsers : []
         );
         setContent('');
         setChallengeTitle('');
         clearMedia();
         setIsChallenge(false);
+        setIsPrivate(false);
+        setInvitedUsers([]);
         setChallengeDuration('8');
         toast({
           title: 'Success',
@@ -515,6 +582,11 @@ export default function FeedPage() {
               </div>
             </div>
             <div className='flex items-center gap-2'>
+              {post.isPrivate && post.type === 'challenge' && (
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground" title="Private Challenge">
+                  <Lock className="h-4 w-4" />
+                </div>
+              )}
               {post.type === 'challenge' && (
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Trophy className="h-5 w-5" />
@@ -635,23 +707,27 @@ export default function FeedPage() {
               </TabsList>
               <TabsContent value="replies" className="p-4 bg-muted/20">
                   <div className='space-y-4'>
-                    {challengeReplies.map(reply => (
-                        <ChallengeReply 
-                            key={reply.id} 
-                            postId={reply.id} 
-                            currentUser={user} 
-                            onDelete={handleDeletePost} 
-                            onAddCoin={handleAddCoin} 
-                            onShare={handleShare} 
-                            isPending={isPending}
-                            onComment={() => toggleCommentBox(reply.id)}
-                            isCommentBoxOpen={activeCommentBox === reply.id}
-                            commentContent={activeCommentBox === reply.id ? commentContent : ''}
-                            onCommentContentChange={(text) => activeCommentBox === reply.id && setCommentContent(text)}
-                            onCommentSubmit={() => handleCommentSubmit(reply.id)}
-                            allComments={reply.comments}
-                        />
-                    ))}
+                    {challengeReplies.length > 0 ? (
+                      challengeReplies.map(reply => (
+                          <ChallengeReply 
+                              key={reply.id} 
+                              postId={reply.id} 
+                              currentUser={user} 
+                              onDelete={handleDeletePost} 
+                              onAddCoin={handleAddCoin} 
+                              onShare={handleShare} 
+                              isPending={isPending}
+                              onComment={() => toggleCommentBox(reply.id)}
+                              isCommentBoxOpen={activeCommentBox === reply.id}
+                              commentContent={activeCommentBox === reply.id ? commentContent : ''}
+                              onCommentContentChange={(text) => activeCommentBox === reply.id && setCommentContent(text)}
+                              onCommentSubmit={() => handleCommentSubmit(reply.id)}
+                              allComments={reply.comments}
+                          />
+                      ))
+                    ) : (
+                      <p className='text-sm text-center text-muted-foreground py-4'>No one has replied to this challenge yet.</p>
+                    )}
                   </div>
               </TabsContent>
               <TabsContent value="leaderboard" className="p-4 bg-muted/20">
@@ -669,6 +745,13 @@ export default function FeedPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <InviteFriendsDialog
+        isOpen={isInviteDialogOpen}
+        onClose={() => setInviteDialogOpen(false)}
+        currentUserId={user?.uid ?? ''}
+        selectedUsers={invitedUsers}
+        onSelectionChange={setInvitedUsers}
+      />
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -706,18 +789,36 @@ export default function FeedPage() {
             {videoPreview && (<div className="relative"><video src={videoPreview} controls className="rounded-lg max-h-80 w-auto" /><Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={() => clearMedia(false, true)} disabled={isPending}><X className="h-4 w-4" /></Button></div>)}
             
             {isChallenge && (
-              <div className='pt-2'>
-                <Label htmlFor='duration-select'>Challenge Duration</Label>
-                <Select value={challengeDuration} onValueChange={setChallengeDuration} disabled={isPending || !user}>
-                  <SelectTrigger id='duration-select' className="w-48">
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-60">
-                    {Array.from({ length: 24 }, (_, i) => i + 1).map(hour => (
-                      <SelectItem key={hour} value={String(hour)}>{hour} {hour > 1 ? 'hours' : 'hour'}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className='flex flex-col sm:flex-row gap-4 pt-2 items-start'>
+                <div>
+                  <Label htmlFor='duration-select'>Challenge Duration</Label>
+                  <Select value={challengeDuration} onValueChange={setChallengeDuration} disabled={isPending || !user}>
+                    <SelectTrigger id='duration-select' className="w-48 mt-1">
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="max-h-60">
+                      {Array.from({ length: 24 }, (_, i) => i + 1).map(hour => (
+                        <SelectItem key={hour} value={String(hour)}>{hour} {hour > 1 ? 'hours' : 'hour'}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className='space-y-2'>
+                   <Label htmlFor="private-challenge-mode">Private Challenge</Label>
+                   <div className="flex items-center space-x-2 pt-1">
+                      <Switch id="private-challenge-mode" checked={isPrivate} onCheckedChange={setIsPrivate} disabled={isPending || !user}/>
+                      <Label htmlFor="private-challenge-mode" className={cn("text-sm", isPrivate && "text-primary font-semibold")}>
+                        {isPrivate ? 'Private' : 'Public'}
+                      </Label>
+                   </div>
+                </div>
+
+                {isPrivate && (
+                   <div className='space-y-1 self-end'>
+                     <Button variant="outline" onClick={() => setInviteDialogOpen(true)}>Invite Friends ({invitedUsers.length})</Button>
+                   </div>
+                )}
               </div>
             )}
             

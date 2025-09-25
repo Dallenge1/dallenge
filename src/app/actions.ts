@@ -28,7 +28,9 @@ export async function createPost(
   videoUrl: string | null,
   postType: 'post' | 'challenge' = 'post',
   challengeDurationHours?: number,
-  title?: string
+  title?: string,
+  isPrivate: boolean = false,
+  invitedUsers: string[] = []
 ) {
   try {
     const postData: any = {
@@ -42,6 +44,7 @@ export async function createPost(
       likes: [],
       comments: [],
       type: postType,
+      isPrivate: false, // Default to public
     };
     
     if (postType === 'challenge') {
@@ -49,6 +52,10 @@ export async function createPost(
       postData.challengeAcceptedBy = [];
       postData.challengeReplies = [];
       postData.coins = [];
+      postData.isPrivate = isPrivate;
+      if (isPrivate) {
+        postData.invitedUsers = invitedUsers;
+      }
       if (challengeDurationHours) {
         const now = Timestamp.now();
         const seconds = now.seconds + challengeDurationHours * 60 * 60;
@@ -256,12 +263,21 @@ export async function replyToChallenge(
   }
 }
 
-export async function deletePost(postId: string, userId: string) {
+export async function deletePost(postId: string) {
     try {
         const postRef = doc(db, 'posts', postId);
+        const postSnap = await getDoc(postRef);
+        if (!postSnap.exists()) return;
+
+        const postData = postSnap.data();
+        const authorId = postData.authorId;
+
         await deleteDoc(postRef);
+
         revalidatePath('/feed');
-        revalidatePath(`/users/${userId}`);
+        if (authorId) {
+          revalidatePath(`/users/${authorId}`);
+        }
     } catch (error) {
         console.error('Error deleting post:', error);
         throw new Error('Failed to delete post.');

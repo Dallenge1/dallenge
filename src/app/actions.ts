@@ -170,10 +170,6 @@ export async function addCoin(postId: string, userId: string) {
         }
         const postData = postSnap.data();
         const authorId = postData.authorId;
-
-        if (!authorId) {
-            throw new Error("Post author not found!");
-        }
         
         const givingUserRef = doc(db, 'users', userId);
         const givingUserSnap = await transaction.get(givingUserRef);
@@ -183,12 +179,13 @@ export async function addCoin(postId: string, userId: string) {
         const postCoins = postData.coins || [];
         if (postCoins.includes(userId)) {
             // User is taking back their coin
+            // This is allowed now based on user feedback
             transaction.update(postRef, { coins: arrayRemove(userId) });
         } else {
             // User is giving a coin for the first time
             transaction.update(postRef, { coins: arrayUnion(userId) });
 
-            if (authorId !== userId) {
+            if (authorId && authorId !== userId) {
                 await createActivity(authorId, {
                     type: 'COIN_RECEIVED',
                     fromUserId: userId,
@@ -412,8 +409,27 @@ export async function deletePost(postId: string, authorId?: string) {
 
         const postData = postSnap.data();
         const currentAuthorId = postData.authorId;
+        const batch = writeBatch(db);
 
-        await deleteDoc(postRef);
+        // Delete the post itself
+        batch.delete(postRef);
+
+        // Find all users who have activity related to this post and delete it
+        const allUsersQuery = query(collection(db, 'users'));
+        const allUsersSnap = await getDocs(allUsersQuery);
+
+        for (const userDoc of allUsersSnap.docs) {
+            const activityQuery = query(
+                collection(db, 'users', userDoc.id, 'activity'),
+                where('postId', '==', postId)
+            );
+            const activitySnap = await getDocs(activityQuery);
+            activitySnap.forEach(activityDoc => {
+                batch.delete(activityDoc.ref);
+            });
+        }
+        
+        await batch.commit();
 
         revalidatePath('/feed');
         if (authorId) {
@@ -421,6 +437,8 @@ export async function deletePost(postId: string, authorId?: string) {
         } else if (currentAuthorId) {
           revalidatePath(`/users/${currentAuthorId}`);
         }
+        revalidatePath('/dashboard');
+
     } catch (error) {
         console.error('Error deleting post:', error);
         throw new Error('Failed to delete post.');

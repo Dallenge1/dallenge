@@ -615,7 +615,7 @@ export default function FeedPage() {
         
         {post.type === 'challenge' && (challengeReplies.length > 0 || (post.coins && post.coins.length > 0)) && (
           <CardContent className='p-0 border-t'>
-            <Tabs defaultValue="replies" className="w-full">
+            <Tabs defaultValue={challengeHasEnded ? "leaderboard" : "replies"} className="w-full">
               <TabsList className="grid w-full grid-cols-2 rounded-none">
                 <TabsTrigger value="replies">Replies ({challengeReplies.length})</TabsTrigger>
                 <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>

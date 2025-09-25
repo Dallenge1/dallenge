@@ -204,7 +204,7 @@ export default function ChallengeReply({
           {comments.length > 0 && (
             <div className="mt-4 space-y-4">
               {comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (
-                <Comment key={comment.id} comment={comment} currentUser={currentUser} onLikeComment={() => onLikeComment(postId, comment.id)} isPending={isPending} />
+                <Comment key={`${comment.id}-${index}`} comment={comment} currentUser={currentUser} onLikeComment={() => onLikeComment(postId, comment.id)} isPending={isPending} />
               ))}
             </div>
           )}

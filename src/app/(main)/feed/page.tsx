@@ -622,7 +622,7 @@ export default function FeedPage() {
                 <div className="flex justify-end"><Button onClick={() => handleCommentSubmit(post.id)} disabled={isPending || !commentContent.trim()}>{isPending ? 'Commenting...' : 'Comment'}</Button></div>
               </div>
             </div>
-            {post.comments.length > 0 && (<div className="mt-4 space-y-4">{post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (<Comment key={comment.id} comment={comment} currentUser={user} onLikeComment={() => handleLikeComment(post.id, comment.id)} isPending={isPending} />))}</div>)}
+            {post.comments.length > 0 && (<div className="mt-4 space-y-4">{post.comments.slice().sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis()).map((comment, index) => (<Comment key={`${comment.id}-${index}`} comment={comment} currentUser={user} onLikeComment={() => handleLikeComment(post.id, comment.id)} isPending={isPending} />))}</div>)}
           </CardContent>
         )}
 

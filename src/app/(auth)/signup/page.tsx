@@ -26,8 +26,7 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { Chrome } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z
   .object({
@@ -36,6 +35,7 @@ const formSchema = z
     email: z.string().email('Please enter a valid email address.'),
     password: z.string().min(6, 'Password must be at least 6 characters.'),
     confirmPassword: z.string(),
+    referralCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -49,15 +49,6 @@ export default function SignupPage() {
   const { signUp, signInWithGoogle, loading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [referralId, setReferralId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const ref = searchParams.get('ref');
-    if (ref) {
-      setReferralId(ref);
-    }
-  }, [searchParams]);
 
   const form = useForm<SignupFormInputs>({
     resolver: zodResolver(formSchema),
@@ -67,12 +58,13 @@ export default function SignupPage() {
       email: '',
       password: '',
       confirmPassword: '',
+      referralCode: '',
     },
   });
 
   const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
     try {
-      await signUp(data.email, data.password, data.firstName, data.lastName, referralId);
+      await signUp(data.email, data.password, data.firstName, data.lastName, data.referralCode);
       toast({
         title: 'Success',
         description: 'Account created successfully! You received 100 bonus coins.',
@@ -89,11 +81,14 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    // For Google Sign-In, we can't easily pass the referral code from the form.
+    // This is a simplification for now. A more complex implementation could
+    // ask for the referral code on a subsequent screen if it's a new user.
     try {
-      await signInWithGoogle(referralId);
+      await signInWithGoogle();
       toast({
         title: 'Success',
-        description: 'Account created successfully! You received 100 bonus coins.',
+        description: 'Account created successfully! You may have received bonus coins.',
       });
       router.push('/dashboard');
     } catch (error) {
@@ -115,7 +110,6 @@ export default function SignupPage() {
           <CardTitle className="text-2xl">Sign Up</CardTitle>
           <CardDescription>
             Enter your information to create an account.
-            {referralId && <p className="text-primary font-semibold mt-2">You're signing up with a referral!</p>}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -201,6 +195,19 @@ export default function SignupPage() {
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="referralCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Referral Code (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter referral code" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

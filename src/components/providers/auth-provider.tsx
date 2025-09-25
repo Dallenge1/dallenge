@@ -25,8 +25,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
-  signUp: (email: string, pass: string, firstName: string, lastName: string, referralId?: string | null) => Promise<any>;
-  signInWithGoogle: (referralId?: string | null) => Promise<any>;
+  signUp: (email: string, pass: string, firstName: string, lastName: string, referralCode?: string | undefined) => Promise<any>;
+  signInWithGoogle: (referralCode?: string | undefined) => Promise<any>;
   logOut: () => Promise<any>;
   updateUserPhoto: (file: File | Blob) => Promise<void>;
   updateUserProfile: (data: {displayName: string, bio?: string, dob?: Date, phone?: string}) => Promise<void>;
@@ -54,10 +54,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const createUserInFirestore = async (user: User, referralId: string | null = null) => {
+  const createUserInFirestore = async (user: User, referralCode: string | undefined = undefined) => {
     const userRef = doc(db, 'users', user.uid);
-    const referrerRef = referralId ? doc(db, 'users', referralId) : null;
+    let referrerRef = null;
 
+    if (referralCode) {
+        // The referral code is the UID of the referrer
+        referrerRef = doc(db, 'users', referralCode);
+    }
+    
     try {
       await runTransaction(db, async (transaction) => {
         const docSnap = await transaction.get(userRef);
@@ -85,6 +90,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const referrerSnap = await transaction.get(referrerRef);
           if (referrerSnap.exists()) {
             transaction.update(referrerRef, { coins: increment(1000) });
+          } else {
+            console.warn(`Referrer with code ${referralCode} not found.`);
           }
         }
       });
@@ -122,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [authInstance]);
   
 
-  const signUp = async (email: string, pass: string, firstName: string, lastName: string, referralId: string | null = null) => {
+  const signUp = async (email: string, pass: string, firstName: string, lastName: string, referralCode: string | undefined = undefined) => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
@@ -135,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       const updatedUser = { ...userCredential.user, displayName, photoURL: defaultAvatarUrl };
-      await createUserInFirestore(updatedUser as User, referralId);
+      await createUserInFirestore(updatedUser as User, referralCode);
 
       setUser(authInstance.currentUser); // Use the fresh user from auth
       return userCredential;
@@ -154,12 +161,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = async (referralId: string | null = null) => {
+  const signInWithGoogle = async (referralCode: string | undefined = undefined) => {
     setLoading(true);
     try {
       const result = await signInWithPopup(authInstance, googleProvider);
       const user = result.user;
-      await createUserInFirestore(user, referralId);
+      await createUserInFirestore(user, referralCode);
       setUser(user);
       return result;
     } finally {
@@ -337,5 +344,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

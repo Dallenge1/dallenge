@@ -109,17 +109,17 @@ export default function UserProfilePage() {
   const [dialogOpen, setDialogOpen] = useState<'followers' | 'following' | null>(null);
   
   const isFollowing = user?.followers?.includes(currentUser?.uid ?? '') ?? false;
-  const [referralLink, setReferralLink] = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && isCurrentUserProfile && userId) {
-        setReferralLink(`${window.location.origin}/signup?ref=${userId}`);
+    if (isCurrentUserProfile && userId) {
+        setReferralCode(userId);
     }
   }, [isCurrentUserProfile, userId]);
 
   const handleCopyReferral = () => {
-    navigator.clipboard.writeText(referralLink);
-    toast({ title: 'Referral link copied!' });
+    navigator.clipboard.writeText(referralCode);
+    toast({ title: 'Referral code copied!' });
   }
 
   useEffect(() => {
@@ -553,7 +553,7 @@ export default function UserProfilePage() {
                 <Button asChild variant="outline"><Link href="/settings">Edit Profile</Link></Button>
                  <Button onClick={handleCopyReferral} variant="secondary">
                     <Copy className="mr-2 h-4 w-4" />
-                    Copy Referral Link
+                    Copy Referral Code
                 </Button>
              </div>
            ) : currentUser && (

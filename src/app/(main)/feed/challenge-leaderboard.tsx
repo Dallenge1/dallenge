@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { User } from "firebase/auth";
 
 type Post = {
   id: string;
@@ -27,9 +27,12 @@ type Post = {
 type ChallengeLeaderboardProps = {
   replies: Post[];
   challengeEnded: boolean;
+  currentUser: User | null;
 };
 
-const LeaderboardEntry = ({ reply, rank, challengeEnded, isGenerating, onGenerateImage }: { reply: Post, rank: number, challengeEnded: boolean, isGenerating: boolean, onGenerateImage: (input: GenerateWinnerImageInput) => void }) => {
+const LeaderboardEntry = ({ reply, rank, challengeEnded, isGenerating, onGenerateImage, currentUser }: { reply: Post, rank: number, challengeEnded: boolean, isGenerating: boolean, onGenerateImage: (input: GenerateWinnerImageInput) => void, currentUser: User | null }) => {
+  const isWinner = currentUser?.uid === reply.authorId;
+
   return (
       <Card className="p-3 mb-2 shadow-sm">
         <div className="flex items-center gap-4">
@@ -67,7 +70,7 @@ const LeaderboardEntry = ({ reply, rank, challengeEnded, isGenerating, onGenerat
             <Coins className="h-4 w-4" />
             <span>{reply.coins?.length ?? 0}</span>
           </div>
-          {challengeEnded && rank <= 3 && (
+          {challengeEnded && rank <= 3 && isWinner && (
             <Button
               size="sm"
               variant="ghost"
@@ -79,6 +82,7 @@ const LeaderboardEntry = ({ reply, rank, challengeEnded, isGenerating, onGenerat
               })}
               disabled={isGenerating}
               className="h-8"
+              title="Generate your winner's certificate"
             >
               {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
             </Button>
@@ -89,7 +93,7 @@ const LeaderboardEntry = ({ reply, rank, challengeEnded, isGenerating, onGenerat
 }
 
 
-export default function ChallengeLeaderboard({ replies, challengeEnded }: ChallengeLeaderboardProps) {
+export default function ChallengeLeaderboard({ replies, challengeEnded, currentUser }: ChallengeLeaderboardProps) {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -178,6 +182,7 @@ export default function ChallengeLeaderboard({ replies, challengeEnded }: Challe
                 challengeEnded={challengeEnded}
                 isGenerating={isGenerating === reply.authorName}
                 onGenerateImage={handleGenerateImage}
+                currentUser={currentUser}
               />
             ))}
           </div>
@@ -193,6 +198,7 @@ export default function ChallengeLeaderboard({ replies, challengeEnded }: Challe
                         challengeEnded={challengeEnded}
                         isGenerating={isGenerating === reply.authorName}
                         onGenerateImage={handleGenerateImage}
+                        currentUser={currentUser}
                     />
                 ))}
               </CollapsibleContent>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
@@ -696,7 +695,7 @@ export default function FeedPage() {
                   </div>
               </TabsContent>
               <TabsContent value="leaderboard" className="p-4 bg-muted/20">
-                <ChallengeLeaderboard replies={leaderboardEntries} challengeEnded={challengeHasEnded}/>
+                <ChallengeLeaderboard replies={leaderboardEntries} challengeEnded={challengeHasEnded} currentUser={user} />
               </TabsContent>
             </Tabs>
           </CardContent>

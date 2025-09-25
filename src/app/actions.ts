@@ -6,6 +6,7 @@ import { addDoc, collection, serverTimestamp, doc, updateDoc, arrayUnion, arrayR
 import { revalidatePath } from 'next/cache';
 import { auth } from 'firebase-admin';
 import { getAuth } from 'firebase/auth';
+import { getOrCreateChat, sendMessage } from './chat-actions';
 
 async function updateAllUserPosts(userId: string, newPhotoURL: string) {
   const postsQuery = query(collection(db, 'posts'), where('authorId', '==', userId));
@@ -83,6 +84,7 @@ export async function createPost(
     // If it's a private challenge, create notifications for invited users
     if (postType === 'challenge' && isPrivate && invitedUsers.length > 0) {
       for (const invitedUserId of invitedUsers) {
+        // Send an activity feed notification
         await createActivity(invitedUserId, {
           type: 'CHALLENGE_INVITE',
           fromUserId: authorId,
@@ -91,6 +93,16 @@ export async function createPost(
           postId: postRef.id,
           postTitle: title,
         });
+        
+        // Also send a direct message
+        try {
+            const chatId = await getOrCreateChat(authorId, invitedUserId);
+            const invitationMessage = `You've been invited to the challenge: "${title || 'Unnamed Challenge'}"! Join the fun.`;
+            // We send the message from the invited user to the creator to avoid self-notification
+            await sendMessage(chatId, authorId, invitationMessage);
+        } catch (chatError) {
+            console.error(`Failed to send chat invite to ${invitedUserId}:`, chatError);
+        }
       }
     }
 
@@ -151,44 +163,46 @@ export async function addCoin(postId: string, userId: string) {
   const postRef = doc(db, 'posts', postId);
 
   try {
-    const postSnap = await getDoc(postRef);
-    if (!postSnap.exists()) {
-      throw new Error("Post does not exist!");
-    }
-    const postData = postSnap.data();
-    const authorId = postData.authorId;
+    await runTransaction(db, async (transaction) => {
+        const postSnap = await transaction.get(postRef);
+        if (!postSnap.exists()) {
+            throw new Error("Post does not exist!");
+        }
+        const postData = postSnap.data();
+        const authorId = postData.authorId;
 
-    if (!authorId) {
-      throw new Error("Post author not found!");
-    }
-    
-    const givingUserRef = doc(db, 'users', userId);
-    const givingUserSnap = await getDoc(givingUserRef);
-    if (!givingUserSnap.exists()) throw new Error('Giving user not found');
-    const givingUserData = givingUserSnap.data();
+        if (!authorId) {
+            throw new Error("Post author not found!");
+        }
+        
+        const givingUserRef = doc(db, 'users', userId);
+        const givingUserSnap = await transaction.get(givingUserRef);
+        if (!givingUserSnap.exists()) throw new Error('Giving user not found');
+        const givingUserData = givingUserSnap.data();
 
-    const postCoins = postData.coins || [];
-    if (postCoins.includes(userId)) {
-      // User is taking back their coin
-      await updateDoc(postRef, { coins: arrayRemove(userId) });
-    } else {
-      // User is giving a coin for the first time
-      await updateDoc(postRef, { coins: arrayUnion(userId) });
+        const postCoins = postData.coins || [];
+        if (postCoins.includes(userId)) {
+            // User is taking back their coin
+            transaction.update(postRef, { coins: arrayRemove(userId) });
+        } else {
+            // User is giving a coin for the first time
+            transaction.update(postRef, { coins: arrayUnion(userId) });
 
-      if (authorId !== userId) {
-        await createActivity(authorId, {
-            type: 'COIN_RECEIVED',
-            fromUserId: userId,
-            fromUserName: givingUserData.displayName,
-            fromUserAvatarUrl: givingUserData.photoURL,
-            postId: postId,
-            postTitle: postData.title || postData.content?.substring(0, 50),
-        });
-      }
-    }
+            if (authorId !== userId) {
+                await createActivity(authorId, {
+                    type: 'COIN_RECEIVED',
+                    fromUserId: userId,
+                    fromUserName: givingUserData.displayName,
+                    fromUserAvatarUrl: givingUserData.photoURL,
+                    postId: postId,
+                    postTitle: postData.title || postData.content?.substring(0, 50),
+                });
+            }
+        }
+    });
 
     revalidatePath('/feed');
-    revalidatePath(`/users/${authorId}`);
+    revalidatePath(`/users/${postData.authorId}`);
     revalidatePath('/leaderboard');
     revalidatePath('/dashboard');
 
@@ -390,20 +404,22 @@ export async function replyToChallenge(
   }
 }
 
-export async function deletePost(postId: string) {
+export async function deletePost(postId: string, authorId?: string) {
     try {
         const postRef = doc(db, 'posts', postId);
         const postSnap = await getDoc(postRef);
         if (!postSnap.exists()) return;
 
         const postData = postSnap.data();
-        const authorId = postData.authorId;
+        const currentAuthorId = postData.authorId;
 
         await deleteDoc(postRef);
 
         revalidatePath('/feed');
         if (authorId) {
           revalidatePath(`/users/${authorId}`);
+        } else if (currentAuthorId) {
+          revalidatePath(`/users/${currentAuthorId}`);
         }
     } catch (error) {
         console.error('Error deleting post:', error);
@@ -438,5 +454,7 @@ export async function markActivityAsRead(userId: string, activityId: string) {
         // Do not throw, not a critical failure
     }
 }
+
+    
 
     

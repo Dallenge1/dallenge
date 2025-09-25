@@ -113,96 +113,36 @@ export default function FeedPage() {
       return;
     }
 
-    const handleSnapshot = (querySnapshot: any, existingPosts: Map<string, Post>) => {
-      querySnapshot.forEach((doc: any) => {
-        const data = doc.data();
-        existingPosts.set(doc.id, {
-          id: doc.id,
-          ...data,
-          comments: data.comments || [],
-        } as Post);
-      });
-    };
-
-    // Query for public posts and challenges
-    const publicQuery = query(
+    // A single query to get all recent posts
+    const allPostsQuery = query(
       collection(db, 'posts'),
-      where('isPrivate', '==', false),
       orderBy('timestamp', 'desc')
     );
 
-    // Query for private content (challenges) for the current user
-    const privateQuery = query(
-      collection(db, 'posts'),
-      where('isPrivate', '==', true),
-      where('invitedUsers', 'array-contains', user.uid)
-    );
-    
-    const myPrivateQuery = query(
-      collection(db, 'posts'),
-      where('isPrivate', '==', true),
-      where('authorId', '==', user.uid)
-    );
+    const unsubscribe = onSnapshot(allPostsQuery, (snapshot) => {
+      const allPosts: Post[] = [];
+      snapshot.forEach((doc) => {
+        allPosts.push({ id: doc.id, ...doc.data() } as Post);
+      });
 
-    const unsubscribePublic = onSnapshot(publicQuery, (publicSnapshot) => {
-      const allPosts = new Map<string, Post>();
-      handleSnapshot(publicSnapshot, allPosts);
+      // Filter posts on the client-side
+      const visiblePosts = allPosts.filter(post => {
+        if (!post.isPrivate) {
+          return true; // Public posts are always visible
+        }
+        // Private posts are visible only to the author or invited users
+        return post.authorId === user.uid || post.invitedUsers?.includes(user.uid);
+      });
 
-      // Fetch and merge private posts
-      const fetchPrivatePosts = async () => {
-        const [privateSnapshot, myPrivateSnapshot] = await Promise.all([
-          getDocs(privateQuery),
-          getDocs(myPrivateQuery),
-        ]);
-        handleSnapshot(privateSnapshot, allPosts);
-        handleSnapshot(myPrivateSnapshot, allPosts);
-        
-        const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-        setPosts(sortedPosts);
-        setLoading(false);
-      };
-      
-      fetchPrivatePosts();
+      setPosts(visiblePosts);
+      setLoading(false);
     }, (error) => {
-      console.error("Error fetching public posts: ", error);
+      console.error("Error fetching posts: ", error);
       toast({ variant: 'destructive', title: "Error loading feed."});
       setLoading(false);
     });
 
-    const unsubscribePrivate = onSnapshot(privateQuery, (snapshot) => {
-        // Re-fetch all to ensure sync
-        setLoading(true);
-        Promise.all([getDocs(publicQuery), getDocs(myPrivateQuery), getDocs(privateQuery)]).then(([publicSnapshot, myPrivateSnapshot, privateSnapshot]) => {
-             const allPosts = new Map<string, Post>();
-             handleSnapshot(publicSnapshot, allPosts);
-             handleSnapshot(myPrivateSnapshot, allPosts);
-             handleSnapshot(privateSnapshot, allPosts);
-             const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-             setPosts(sortedPosts);
-             setLoading(false);
-        });
-    });
-
-    const unsubscribeMyPrivate = onSnapshot(myPrivateQuery, (snapshot) => {
-        // Re-fetch all to ensure sync
-        setLoading(true);
-        Promise.all([getDocs(publicQuery), getDocs(myPrivateQuery), getDocs(privateQuery)]).then(([publicSnapshot, myPrivateSnapshot, privateSnapshot]) => {
-             const allPosts = new Map<string, Post>();
-             handleSnapshot(publicSnapshot, allPosts);
-             handleSnapshot(myPrivateSnapshot, allPosts);
-             handleSnapshot(privateSnapshot, allPosts);
-             const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-             setPosts(sortedPosts);
-             setLoading(false);
-        });
-    });
-
-
-    return () => {
-      unsubscribePublic();
-      unsubscribePrivate();
-      unsubscribeMyPrivate();
-    };
+    return () => unsubscribe();
   }, [user, toast]);
   
   useEffect(() => {
@@ -856,3 +796,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
+    

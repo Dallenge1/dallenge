@@ -36,15 +36,15 @@ export default function Comment({ comment, currentUser, onLikeComment, isPending
           </p>
         </div>
         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{comment.content}</p>
-        <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-6 w-6 group" onClick={onLikeComment} disabled={isPending || !currentUser}>
+      </div>
+       <div className="flex items-center gap-1 text-muted-foreground">
+            <Button variant="ghost" size="icon" className="h-7 w-7 group" onClick={onLikeComment} disabled={isPending || !currentUser}>
                 <Heart className={cn('h-3.5 w-3.5 group-hover:text-red-500', hasLiked && 'fill-red-500 text-red-500')} />
             </Button>
             {comment.likes?.length > 0 && (
-                <span className="text-xs text-muted-foreground">{comment.likes.length}</span>
+                <span className="text-xs">{comment.likes.length}</span>
             )}
         </div>
-      </div>
     </div>
   );
 }

@@ -162,11 +162,6 @@ export async function addCoin(postId: string, userId: string) {
       throw new Error("Post author not found!");
     }
     
-    if (authorId === userId) {
-      console.log("User cannot give a coin to their own post.");
-      return; 
-    }
-    
     const givingUserRef = doc(db, 'users', userId);
     const givingUserSnap = await getDoc(givingUserRef);
     if (!givingUserSnap.exists()) throw new Error('Giving user not found');
@@ -179,14 +174,17 @@ export async function addCoin(postId: string, userId: string) {
     } else {
       // User is giving a coin for the first time
       await updateDoc(postRef, { coins: arrayUnion(userId) });
-      await createActivity(authorId, {
-          type: 'COIN_RECEIVED',
-          fromUserId: userId,
-          fromUserName: givingUserData.displayName,
-          fromUserAvatarUrl: givingUserData.photoURL,
-          postId: postId,
-          postTitle: postData.title || postData.content?.substring(0, 50),
-      });
+
+      if (authorId !== userId) {
+        await createActivity(authorId, {
+            type: 'COIN_RECEIVED',
+            fromUserId: userId,
+            fromUserName: givingUserData.displayName,
+            fromUserAvatarUrl: givingUserData.photoURL,
+            postId: postId,
+            postTitle: postData.title || postData.content?.substring(0, 50),
+        });
+      }
     }
 
     revalidatePath('/feed');
@@ -196,9 +194,6 @@ export async function addCoin(postId: string, userId: string) {
 
   } catch (error) {
     console.error('Error in addCoin transaction:', error);
-    if (error instanceof Error && error.message.includes("own post")) {
-        return;
-    }
     throw new Error('Failed to give coin.');
   }
 }
@@ -233,7 +228,7 @@ export async function addComment(
       comments: arrayUnion(newComment),
     });
 
-    if (authorId) {
+    if (authorId && authorId !== comment.authorId) {
         await createActivity(authorId, {
             type: 'NEW_COMMENT',
             fromUserId: comment.authorId,
@@ -243,6 +238,9 @@ export async function addComment(
             postTitle: postData?.title || postData?.content?.substring(0, 50),
             commentContent: comment.content.substring(0, 50),
         });
+    }
+
+    if (authorId) {
         revalidatePath(`/users/${authorId}`);
     }
 
@@ -267,6 +265,7 @@ export async function likeComment(postId: string, commentId: string, userId: str
     const comments = postData.comments || [];
     let commentFound = false;
     let targetComment: any = null;
+    let alreadyLiked = false;
 
     const updatedComments = comments.map((comment: any) => {
       if (comment.id === commentId) {
@@ -274,6 +273,7 @@ export async function likeComment(postId: string, commentId: string, userId: str
         const likes = comment.likes || [];
         if (likes.includes(userId)) {
           // Unlike
+          alreadyLiked = true;
           targetComment = { ...comment, likes: likes.filter((id: string) => id !== userId) };
         } else {
           // Like
@@ -291,7 +291,7 @@ export async function likeComment(postId: string, commentId: string, userId: str
     await updateDoc(postRef, { comments: updatedComments });
     
     // Create activity for the comment author if someone else liked it
-    if (targetComment && targetComment.authorId !== userId && !targetComment.likes.includes(userId)) {
+    if (targetComment && targetComment.authorId !== userId && !alreadyLiked) {
         const likingUserSnap = await getDoc(doc(db, 'users', userId));
         if (likingUserSnap.exists()) {
             const likingUser = likingUserSnap.data();
@@ -368,7 +368,7 @@ export async function replyToChallenge(
       challengeReplies: arrayUnion(replyPostRef.id),
     });
 
-     if (challengePostData && challengePostData.authorId) {
+     if (challengePostData && challengePostData.authorId && challengePostData.authorId !== reply.authorId) {
         await createActivity(challengePostData.authorId, {
             type: 'CHALLENGE_REPLY',
             fromUserId: reply.authorId,

@@ -54,52 +54,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const createUserInFirestore = async (user: User, referralCode: string | undefined = undefined) => {
+  const createUserInFirestore = async (user: User, referralCode?: string) => {
     const userRef = doc(db, 'users', user.uid);
-    let referrerRef = null;
-
-    if (referralCode) {
-        // The referral code is the UID of the referrer
-        referrerRef = doc(db, 'users', referralCode);
-    }
-    
+    const referrerRef = referralCode ? doc(db, 'users', referralCode) : null;
+  
     try {
       await runTransaction(db, async (transaction) => {
         const docSnap = await transaction.get(userRef);
         if (docSnap.exists()) {
-          return; // User already exists, do nothing.
+          // If the user document already exists, we might just need to update it
+          // or handle a re-authentication scenario. For now, we'll just return.
+          return;
         }
-
-        // Set the new user's document with initial coins
+  
+        // 1. Create the new user's document
         transaction.set(userRef, {
-            displayName: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL,
-            createdAt: serverTimestamp(),
-            uid: user.uid,
-            followers: [],
-            following: [],
-            coins: 100, // All new users start with 100 coins
-            inventory: [],
-            status: 'online',
-            lastSeen: serverTimestamp(),
-        }, { merge: true });
-
-        // If there's a valid referrer, increment their coins
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+          uid: user.uid,
+          followers: [],
+          following: [],
+          coins: 100, // Base coins for every new user
+          inventory: [],
+          status: 'online',
+          lastSeen: serverTimestamp(),
+        });
+  
+        // 2. If a valid referrer exists, credit them
         if (referrerRef) {
           const referrerSnap = await transaction.get(referrerRef);
           if (referrerSnap.exists()) {
+            // Give the referrer their bonus coins
             transaction.update(referrerRef, { coins: increment(1000) });
           } else {
+            // Handle case where referral code is invalid, maybe log it
             console.warn(`Referrer with code ${referralCode} not found.`);
           }
         }
       });
     } catch (e) {
-      console.error("Transaction failed: ", e);
+      console.error("User creation transaction failed: ", e);
       throw new Error("Failed to create user account in database.");
     }
-}
+  };
 
 
   useEffect(() => {

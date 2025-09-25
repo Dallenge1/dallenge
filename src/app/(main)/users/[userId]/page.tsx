@@ -109,18 +109,6 @@ export default function UserProfilePage() {
   const [dialogOpen, setDialogOpen] = useState<'followers' | 'following' | null>(null);
   
   const isFollowing = user?.followers?.includes(currentUser?.uid ?? '') ?? false;
-  const [referralCode, setReferralCode] = useState('');
-
-  useEffect(() => {
-    if (isCurrentUserProfile && userId) {
-        setReferralCode(userId);
-    }
-  }, [isCurrentUserProfile, userId]);
-
-  const handleCopyReferral = () => {
-    navigator.clipboard.writeText(referralCode);
-    toast({ title: 'Referral code copied!' });
-  }
 
   useEffect(() => {
     if (!userId) return;
@@ -552,15 +540,6 @@ export default function UserProfilePage() {
              <div className="flex flex-col gap-4 mt-4">
                 <div className="flex flex-wrap gap-2">
                     <Button asChild variant="outline"><Link href="/settings">Edit Profile</Link></Button>
-                    <Button onClick={handleCopyReferral} variant="secondary">
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy Referral Code
-                    </Button>
-                </div>
-                <div className="p-3 border rounded-lg bg-muted/50 max-w-md">
-                    <p className="text-sm font-medium">Your Referral Code</p>
-                    <p className="text-xs text-muted-foreground mb-2">Share this code with your friends!</p>
-                    <p className="font-mono text-sm bg-background p-2 rounded-md">{referralCode}</p>
                 </div>
              </div>
            ) : currentUser && (

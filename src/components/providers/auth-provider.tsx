@@ -25,8 +25,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<any>;
-  signUp: (email: string, pass: string, firstName: string, lastName: string, referralCode?: string | undefined) => Promise<any>;
-  signInWithGoogle: (referralCode?: string | undefined) => Promise<any>;
+  signUp: (email: string, pass: string, firstName: string, lastName: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
   logOut: () => Promise<any>;
   updateUserPhoto: (file: File | Blob) => Promise<void>;
   updateUserProfile: (data: {displayName: string, bio?: string, dob?: Date, phone?: string}) => Promise<void>;
@@ -54,57 +54,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const createUserInFirestore = async (user: User, referralCode?: string) => {
+  const createUserInFirestore = async (user: User) => {
     const userRef = doc(db, 'users', user.uid);
-    const referrerRef = referralCode ? doc(db, 'users', referralCode) : null;
-    const referralsCollectionRef = collection(db, 'referrals');
-  
-    try {
-      await runTransaction(db, async (transaction) => {
-        const docSnap = await transaction.get(userRef);
-        if (docSnap.exists()) {
-          return;
-        }
-  
-        // 1. Create the new user's document with 100 starting coins
-        transaction.set(userRef, {
-          displayName: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          createdAt: serverTimestamp(),
-          uid: user.uid,
-          followers: [],
-          following: [],
-          coins: 100, // Base coins for every new user
-          inventory: [],
-          status: 'online',
-          lastSeen: serverTimestamp(),
-        });
-  
-        // 2. If a valid referral code was used, process the referral
-        if (referrerRef && referrerRef.id !== user.uid) {
-          const referrerSnap = await transaction.get(referrerRef);
-          if (referrerSnap.exists()) {
-            const coinsToAward = 1000;
-            
-            // 2a. Log the referral event in the 'referrals' collection
-            const newReferralRef = doc(referralsCollectionRef); // Create a new doc reference
-            transaction.set(newReferralRef, {
-              referrerId: referrerRef.id,
-              referredUserId: user.uid,
-              timestamp: serverTimestamp(),
-              coinsAwarded: coinsToAward
-            });
+    const docSnap = await getDoc(userRef);
 
-            // 2b. Award the referrer their bonus coins
-            transaction.update(referrerRef, { coins: increment(coinsToAward) });
-          } else {
-            console.warn(`Referrer with code ${referralCode} not found.`);
-          }
-        }
+    if (docSnap.exists()) {
+      return; // User already exists
+    }
+
+    try {
+      await setDoc(userRef, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        createdAt: serverTimestamp(),
+        uid: user.uid,
+        followers: [],
+        following: [],
+        coins: 0, // Start with 0 coins
+        inventory: [],
+        status: 'online',
+        lastSeen: serverTimestamp(),
       });
     } catch (e) {
-      console.error("User creation transaction failed: ", e);
+      console.error("User creation failed: ", e);
       throw new Error("Failed to create user account in database.");
     }
   };
@@ -137,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [authInstance]);
   
 
-  const signUp = async (email: string, pass: string, firstName: string, lastName: string, referralCode: string | undefined = undefined) => {
+  const signUp = async (email: string, pass: string, firstName: string, lastName: string) => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(authInstance, email, pass);
@@ -150,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       const updatedUser = { ...userCredential.user, displayName, photoURL: defaultAvatarUrl };
-      await createUserInFirestore(updatedUser as User, referralCode);
+      await createUserInFirestore(updatedUser as User);
 
       setUser(authInstance.currentUser); // Use the fresh user from auth
       return userCredential;
@@ -169,12 +142,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = async (referralCode: string | undefined = undefined) => {
+  const signInWithGoogle = async () => {
     setLoading(true);
     try {
       const result = await signInWithPopup(authInstance, googleProvider);
       const user = result.user;
-      await createUserInFirestore(user, referralCode);
+      await createUserInFirestore(user);
       setUser(user);
       return result;
     } finally {

@@ -104,13 +104,14 @@ export async function sendMessage(
         const otherUserId = members.find((id: string) => id !== senderId);
 
         if (otherUserId) {
+            const unreadCountUpdate: { [key: string]: any } = {};
+            unreadCountUpdate[`unreadCount.${otherUserId}`] = increment(1);
+
             await setDoc(chatRef, { 
                 lastMessageTimestamp: serverTimestamp(),
                 lastMessage: text,
                 lastMessageSenderId: senderId,
-                unreadCount: {
-                    [otherUserId]: increment(1)
-                }
+                ...unreadCountUpdate
             }, { merge: true });
         }
     }
@@ -128,10 +129,10 @@ export async function markChatAsRead(chatId: string, userId: string) {
         const chatRef = doc(db, 'chats', chatId);
         const chatSnap = await getDoc(chatRef);
         if(chatSnap.exists()) {
+             const unreadCountUpdate: { [key: string]: any } = {};
+             unreadCountUpdate[`unreadCount.${userId}`] = 0;
             await setDoc(chatRef, {
-                unreadCount: {
-                    [userId]: 0
-                }
+               ...unreadCountUpdate
             }, { merge: true });
         }
     } catch (error) {
@@ -139,5 +140,3 @@ export async function markChatAsRead(chatId: string, userId: string) {
         // We don't throw here, as it's not critical if this fails
     }
 }
-
-    

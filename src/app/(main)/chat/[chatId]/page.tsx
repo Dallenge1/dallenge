@@ -66,7 +66,7 @@ export default function ChatPage() {
       if (chatId && currentUser) {
           markChatAsRead(chatId, currentUser.uid);
       }
-  }, [chatId, currentUser])
+  }, [chatId, currentUser, messages]) // Rerun when messages load to mark as read
 
   useEffect(() => {
     if (!chatId || !currentUser) return;

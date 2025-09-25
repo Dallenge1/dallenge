@@ -39,6 +39,7 @@ type Chat = {
   lastMessage?: string;
   lastMessageTimestamp?: Timestamp;
   lastMessageSenderId?: string;
+  unreadCount: number;
 };
 
 export default function ChatsPage() {
@@ -83,6 +84,7 @@ export default function ChatsPage() {
                             lastSeen: userData.lastSeen,
                         };
                     } else {
+                        // Fallback in case user doc doesn't exist for some reason
                         const postsQuery = query(
                             collection(db, 'posts'),
                             where('authorId', '==', otherUserId),
@@ -108,6 +110,7 @@ export default function ChatsPage() {
                     lastMessage: data.lastMessage,
                     lastMessageTimestamp: data.lastMessageTimestamp,
                     lastMessageSenderId: data.lastMessageSenderId,
+                    unreadCount: data.unreadCount?.[currentUser.uid] || 0,
                 } as Chat;
           })
         );
@@ -162,15 +165,8 @@ export default function ChatsPage() {
             {chats.map((chat) => chat.otherUser && (
               <li key={chat.id}>
                 <Link
-                  href={{
-                    pathname: `/chat/${chat.id}`,
-                    query: {
-                      otherUserId: chat.otherUser.id,
-                      displayName: encodeURIComponent(chat.otherUser.displayName),
-                      photoURL: encodeURIComponent(chat.otherUser.photoURL),
-                    },
-                  }}
-                  className="flex items-center gap-4 p-4 transition-colors hover:bg-muted/50"
+                  href={`/chat/${chat.id}`}
+                  className={cn("flex items-center gap-4 p-4 transition-colors", chat.unreadCount > 0 ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50")}
                 >
                   <div className="relative">
                     <Avatar className="h-12 w-12">
@@ -188,18 +184,23 @@ export default function ChatsPage() {
                   </div>
                   <div className="flex-1 truncate">
                     <div className="flex justify-between">
-                        <h3 className="font-semibold">{chat.otherUser.displayName}</h3>
+                        <h3 className={cn("font-semibold", chat.unreadCount > 0 && "text-primary")}>{chat.otherUser.displayName}</h3>
                          {chat.lastMessageTimestamp && (
                             <p className="text-xs text-muted-foreground">
                                 {formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true })}
                             </p>
                         )}
                     </div>
-                    <p className={cn("text-sm truncate", chat.lastMessageSenderId === currentUser?.uid ? "text-muted-foreground" : "text-foreground font-medium")}>
+                    <p className={cn("text-sm truncate", chat.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
                        {chat.lastMessageSenderId === currentUser?.uid && 'You: '}
                        {chat.lastMessage || '...'}
                     </p>
                   </div>
+                   {chat.unreadCount > 0 && (
+                      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-destructive text-destructive-foreground text-xs font-bold">
+                        {chat.unreadCount}
+                      </div>
+                    )}
                 </Link>
               </li>
             ))}

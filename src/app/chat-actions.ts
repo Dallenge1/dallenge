@@ -64,9 +64,10 @@ export async function getOrCreateChat(currentUserId: string, otherUserId: string
   }
   
   // If no chat exists, create a new one
-  const members = [currentUserId, otherUserId].sort();
-  const chatId = members.join('_');
+  const members = [currentUserId, otherUserId];
+  const chatId = members.sort().join('_');
   const chatRef = doc(db, 'chats', chatId);
+  
   await setDoc(chatRef, {
       members: members,
       createdAt: serverTimestamp(),
@@ -75,7 +76,7 @@ export async function getOrCreateChat(currentUserId: string, otherUserId: string
         [currentUserId]: 0,
         [otherUserId]: 0,
       }
-  });
+  }, { merge: true });
   
   return chatId;
 }

@@ -19,6 +19,7 @@ import {
   writeBatch,
   orderBy,
   limit,
+  updateDoc,
 } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -75,6 +76,8 @@ export async function getOrCreateChat(currentUserId: string, otherUserId: string
   await setDoc(chatRef, {
       members: members,
       createdAt: serverTimestamp(),
+      lastMessage: '',
+      lastMessageSenderId: '',
       lastMessageTimestamp: serverTimestamp(),
       unreadCount: {
         [currentUserId]: 0,
@@ -183,7 +186,7 @@ export async function unsendMessage(chatId: string, messageId: string, currentUs
             await updateDoc(chatRef, {
                 lastMessage: '',
                 lastMessageSenderId: '',
-                lastMessageTimestamp: serverTimestamp(), // Or use a specific value
+                lastMessageTimestamp: serverTimestamp(),
             });
         }
         

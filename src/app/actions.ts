@@ -83,7 +83,6 @@ export async function createPost(
 
     // If it's a private challenge, create notifications for invited users
     if (postType === 'challenge' && isPrivate && invitedUsers.length > 0) {
-      const postUrl = `/feed#${postRef.id}`;
       for (const invitedUserId of invitedUsers) {
         // Send an activity feed notification
         await createActivity(invitedUserId, {
@@ -98,7 +97,7 @@ export async function createPost(
         // Also send a direct message
         try {
             const chatId = await getOrCreateChat(authorId, invitedUserId);
-            const invitationMessage = `You've been invited to the challenge: "${title || 'Unnamed Challenge'}"!\n\nJoin the fun here: ${process.env.NEXT_PUBLIC_APP_URL}${postUrl}`;
+            const invitationMessage = `You've been invited to the challenge: "${title || 'Unnamed Challenge'}"`;
             await sendMessage(chatId, authorId, invitationMessage);
         } catch (chatError) {
             console.error(`Failed to send chat invite to ${invitedUserId}:`, chatError);
@@ -414,25 +413,14 @@ export async function deletePost(postId: string, authorId?: string) {
         // Delete the post itself
         batch.delete(postRef);
 
-        // Find all users who have an activity notification related to this post
-        const activityQuery = query(
-            collection(db, "activity"),
-            where('postId', '==', postId)
-        );
-        const activitySnap = await getDocs(activityQuery);
-        
-        activitySnap.forEach(activityDoc => {
-            const activityData = activityDoc.data();
-            const userActivityRef = doc(db, 'users', activityData.recipientId, 'activity', activityDoc.id);
-            batch.delete(userActivityRef);
-        });
-
-        // Also delete from the user-specific activity subcollections
         const usersToUpdate = new Set<string>();
-        usersToUpdate.add(postData.authorId);
+        if(postData.authorId) usersToUpdate.add(postData.authorId);
         postData.likes?.forEach((id: string) => usersToUpdate.add(id));
         postData.coins?.forEach((id: string) => usersToUpdate.add(id));
         postData.comments?.forEach((c: any) => usersToUpdate.add(c.authorId));
+        postData.invitedUsers?.forEach((id: string) => usersToUpdate.add(id));
+        postData.challengeAcceptedBy?.forEach((id: string) => usersToUpdate.add(id));
+
 
         for (const userId of Array.from(usersToUpdate)) {
             const userActivityQuery = query(collection(db, 'users', userId, 'activity'), where('postId', '==', postId));

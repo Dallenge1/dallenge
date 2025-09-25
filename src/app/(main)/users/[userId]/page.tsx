@@ -549,12 +549,19 @@ export default function UserProfilePage() {
            {user.bio && <p className="text-sm max-w-prose mt-2">{user.bio}</p>}
            {user.dob && <p className="text-sm text-muted-foreground">Born {format(new Date(user.dob), 'MMMM d, yyyy')}</p>}
            {isCurrentUserProfile ? (
-             <div className="flex flex-wrap gap-2 mt-4">
-                <Button asChild variant="outline"><Link href="/settings">Edit Profile</Link></Button>
-                 <Button onClick={handleCopyReferral} variant="secondary">
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Referral Code
-                </Button>
+             <div className="flex flex-col gap-4 mt-4">
+                <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline"><Link href="/settings">Edit Profile</Link></Button>
+                    <Button onClick={handleCopyReferral} variant="secondary">
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy Referral Code
+                    </Button>
+                </div>
+                <div className="p-3 border rounded-lg bg-muted/50 max-w-md">
+                    <p className="text-sm font-medium">Your Referral Code</p>
+                    <p className="text-xs text-muted-foreground mb-2">Share this code with your friends!</p>
+                    <p className="font-mono text-sm bg-background p-2 rounded-md">{referralCode}</p>
+                </div>
              </div>
            ) : currentUser && (
              <div className="flex gap-2 mt-4">

@@ -184,7 +184,7 @@ export default function ChatPage() {
           <Link href={`/users/${otherUser.id}`} className="flex items-center gap-4 group">
             <Avatar>
               <AvatarImage src={otherUser.photoURL} alt={otherUser.displayName} />
-              <AvatarFallback>{otherUser.displayName.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{otherUser.displayName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
                 <h1 className="text-xl font-bold group-hover:underline">{otherUser.displayName}</h1>
@@ -220,7 +220,7 @@ export default function ChatPage() {
                 {!isCurrentUser && otherUser && (
                    <Avatar className="h-8 w-8 self-end">
                      <AvatarImage src={otherUser.photoURL} />
-                     <AvatarFallback>{otherUser.displayName.charAt(0)}</AvatarFallback>
+                     <AvatarFallback>{otherUser.displayName?.charAt(0)}</AvatarFallback>
                    </Avatar>
                 )}
                 {isCurrentUser && (

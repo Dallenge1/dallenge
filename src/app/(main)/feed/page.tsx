@@ -109,96 +109,101 @@ export default function FeedPage() {
 
   useEffect(() => {
     if (!user) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
-    // Query for public posts and challenges
-    const publicQuery = query(
-        collection(db, 'posts'),
-        where('isPrivate', '!=', true),
-        orderBy('isPrivate', 'asc'), // Firestore requires this orderBy when using !=
-        orderBy('timestamp', 'desc')
-    );
-
-    // Query for private challenges where current user is the author
-    const myPrivateChallengesQuery = query(
-        collection(db, 'posts'),
-        where('isPrivate', '==', true),
-        where('authorId', '==', user.uid)
-    );
-
-    // Query for private challenges where current user is invited
-    const invitedChallengesQuery = query(
-        collection(db, 'posts'),
-        where('isPrivate', '==', true),
-        where('invitedUsers', 'array-contains', user.uid)
-    );
 
     const handleSnapshot = (querySnapshot: any, existingPosts: Map<string, Post>) => {
-        querySnapshot.forEach((doc: any) => {
-            const data = doc.data();
-            existingPosts.set(doc.id, {
-                id: doc.id,
-                ...data,
-                comments: data.comments || [],
-            } as Post);
-        });
+      querySnapshot.forEach((doc: any) => {
+        const data = doc.data();
+        existingPosts.set(doc.id, {
+          id: doc.id,
+          ...data,
+          comments: data.comments || [],
+        } as Post);
+      });
     };
 
-    const unsubscribePublic = onSnapshot(publicQuery, (snapshot) => {
+    // Query for public posts and challenges
+    const publicQuery = query(
+      collection(db, 'posts'),
+      where('isPrivate', '==', false),
+      orderBy('timestamp', 'desc')
+    );
+
+    // Query for private content (challenges) for the current user
+    const privateQuery = query(
+      collection(db, 'posts'),
+      where('isPrivate', '==', true),
+      where('invitedUsers', 'array-contains', user.uid)
+    );
+    
+    const myPrivateQuery = query(
+      collection(db, 'posts'),
+      where('isPrivate', '==', true),
+      where('authorId', '==', user.uid)
+    );
+
+    const unsubscribePublic = onSnapshot(publicQuery, (publicSnapshot) => {
+      const allPosts = new Map<string, Post>();
+      handleSnapshot(publicSnapshot, allPosts);
+
+      // Fetch and merge private posts
+      const fetchPrivatePosts = async () => {
+        const [privateSnapshot, myPrivateSnapshot] = await Promise.all([
+          getDocs(privateQuery),
+          getDocs(myPrivateQuery),
+        ]);
+        handleSnapshot(privateSnapshot, allPosts);
+        handleSnapshot(myPrivateSnapshot, allPosts);
+        
+        const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+        setPosts(sortedPosts);
+        setLoading(false);
+      };
+      
+      fetchPrivatePosts();
+    }, (error) => {
+      console.error("Error fetching public posts: ", error);
+      toast({ variant: 'destructive', title: "Error loading feed."});
+      setLoading(false);
+    });
+
+    const unsubscribePrivate = onSnapshot(privateQuery, (snapshot) => {
+        // Re-fetch all to ensure sync
         setLoading(true);
-        Promise.all([
-            getDocs(myPrivateChallengesQuery),
-            getDocs(invitedChallengesQuery)
-        ]).then(([myPrivateSnapshot, invitedSnapshot]) => {
-            const allPosts = new Map<string, Post>();
-            handleSnapshot(snapshot, allPosts);
-            handleSnapshot(myPrivateSnapshot, allPosts);
-            handleSnapshot(invitedSnapshot, allPosts);
-            const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-            setPosts(sortedPosts);
-            setLoading(false);
+        Promise.all([getDocs(publicQuery), getDocs(myPrivateQuery), getDocs(privateQuery)]).then(([publicSnapshot, myPrivateSnapshot, privateSnapshot]) => {
+             const allPosts = new Map<string, Post>();
+             handleSnapshot(publicSnapshot, allPosts);
+             handleSnapshot(myPrivateSnapshot, allPosts);
+             handleSnapshot(privateSnapshot, allPosts);
+             const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+             setPosts(sortedPosts);
+             setLoading(false);
         });
     });
 
-    const unsubscribeMyPrivate = onSnapshot(myPrivateChallengesQuery, (snapshot) => {
+    const unsubscribeMyPrivate = onSnapshot(myPrivateQuery, (snapshot) => {
+        // Re-fetch all to ensure sync
         setLoading(true);
-        Promise.all([
-            getDocs(publicQuery),
-            getDocs(invitedChallengesQuery)
-        ]).then(([publicSnapshot, invitedSnapshot]) => {
-            const allPosts = new Map<string, Post>();
-            handleSnapshot(snapshot, allPosts);
-            handleSnapshot(publicSnapshot, allPosts);
-            handleSnapshot(invitedSnapshot, allPosts);
-            const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-            setPosts(sortedPosts);
-            setLoading(false);
+        Promise.all([getDocs(publicQuery), getDocs(myPrivateQuery), getDocs(privateQuery)]).then(([publicSnapshot, myPrivateSnapshot, privateSnapshot]) => {
+             const allPosts = new Map<string, Post>();
+             handleSnapshot(publicSnapshot, allPosts);
+             handleSnapshot(myPrivateSnapshot, allPosts);
+             handleSnapshot(privateSnapshot, allPosts);
+             const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+             setPosts(sortedPosts);
+             setLoading(false);
         });
     });
 
-    const unsubscribeInvited = onSnapshot(invitedChallengesQuery, (snapshot) => {
-        setLoading(true);
-        Promise.all([
-            getDocs(publicQuery),
-            getDocs(myPrivateChallengesQuery)
-        ]).then(([publicSnapshot, myPrivateSnapshot]) => {
-            const allPosts = new Map<string, Post>();
-            handleSnapshot(snapshot, allPosts);
-            handleSnapshot(publicSnapshot, allPosts);
-            handleSnapshot(myPrivateSnapshot, allPosts);
-            const sortedPosts = Array.from(allPosts.values()).sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-            setPosts(sortedPosts);
-            setLoading(false);
-        });
-    });
 
     return () => {
-        unsubscribePublic();
-        unsubscribeMyPrivate();
-        unsubscribeInvited();
+      unsubscribePublic();
+      unsubscribePrivate();
+      unsubscribeMyPrivate();
     };
-}, [user]);
+  }, [user, toast]);
   
   useEffect(() => {
     if (loading || posts.length === 0) {
@@ -722,6 +727,7 @@ export default function FeedPage() {
                               commentContent={activeCommentBox === reply.id ? commentContent : ''}
                               onCommentContentChange={(text) => activeCommentBox === reply.id && setCommentContent(text)}
                               onCommentSubmit={() => handleCommentSubmit(reply.id)}
+                              onCloseCommentBox={() => setActiveCommentBox(null)}
                               allComments={reply.comments}
                           />
                       ))

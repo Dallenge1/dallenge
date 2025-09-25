@@ -12,11 +12,13 @@ import { NAV_LINKS } from '@/lib/placeholder-data';
 import { useAuth } from '../providers/auth-provider';
 import { useUnreadMessages } from '@/hooks/use-unread-messages';
 import { cn } from '@/lib/utils';
+import { useUnreadActivity } from '@/hooks/use-unread-activity';
 
 export default function SidebarNav() {
   const pathname = usePathname();
   const { user } = useAuth();
   const hasUnreadMessages = useUnreadMessages();
+  const hasUnreadActivity = useUnreadActivity();
 
   return (
     <SidebarMenu>
@@ -31,6 +33,7 @@ export default function SidebarNav() {
         if(link.isProfile && !user) return null;
 
         const isMessagesLink = link.href === '/chat';
+        const isNotificationsLink = link.href === '/notifications';
 
         return (
           <SidebarMenuItem key={link.label}>
@@ -43,7 +46,7 @@ export default function SidebarNav() {
               <Link href={href}>
                 <link.icon />
                 <span>{link.label}</span>
-                 {isMessagesLink && hasUnreadMessages && (
+                 {(isMessagesLink && hasUnreadMessages || isNotificationsLink && hasUnreadActivity) && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-destructive group-data-[collapsible=icon]:right-1.5" />
                 )}
               </Link>

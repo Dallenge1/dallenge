@@ -20,7 +20,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { markActivityAsRead } from '@/app/actions';
-import { Coins, Heart, MessageCircle, UserPlus, Trophy } from 'lucide-react';
+import { Coins, Heart, MessageCircle, UserPlus, Trophy, Bell } from 'lucide-react';
 
 type Activity = {
   id: string;
@@ -80,7 +80,7 @@ const ActivityItem = ({ activity, onRead }: { activity: Activity; onRead: (activ
     }
 
     return (
-        <Link href={linkHref} onClick={() => onRead(activity.id)} className="block p-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors">
+        <Link href={linkHref} onClick={() => onRead(activity.id)} className={cn("block p-3 -mx-3 rounded-lg transition-colors", activity.isRead ? "hover:bg-muted/50" : "bg-primary/5 hover:bg-primary/10")}>
             <div className="flex items-start gap-3">
                  <div className="relative">
                     <Avatar className="h-9 w-9">
@@ -93,7 +93,7 @@ const ActivityItem = ({ activity, onRead }: { activity: Activity; onRead: (activ
                 </div>
                 <div className="flex-1 text-sm space-y-1">
                     <p className="text-muted-foreground">
-                        <strong className="text-foreground">{activity.fromUserName}</strong> {renderText()}
+                        <strong className={cn("text-foreground", !activity.isRead && "font-semibold")}>{activity.fromUserName}</strong> {renderText()}
                     </p>
                     <p className="text-xs text-muted-foreground/80">
                         {formatDistanceToNow(activity.timestamp.toDate(), { addSuffix: true })}
@@ -105,8 +105,7 @@ const ActivityItem = ({ activity, onRead }: { activity: Activity; onRead: (activ
     );
 };
 
-
-export default function RecentActivity() {
+export default function NotificationsPage() {
   const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +120,7 @@ export default function RecentActivity() {
     const activityQuery = query(
       collection(db, 'users', user.uid, 'activity'),
       orderBy('timestamp', 'desc'),
-      limit(15)
+      limit(50) // load more activities on this page
     );
 
     const unsubscribe = onSnapshot(activityQuery, (snapshot) => {
@@ -148,18 +147,34 @@ export default function RecentActivity() {
         });
     }
   };
+  
+  const handleMarkAllAsRead = () => {
+    if (!user) return;
+    startTransition(async () => {
+        const unreadActivities = activities.filter(a => !a.isRead);
+        for(const activity of unreadActivities) {
+            await markActivityAsRead(user.uid, activity.id);
+        }
+    });
+  }
 
   return (
-    <Card className="h-full">
-        <CardHeader>
-            <CardTitle>Your Journey</CardTitle>
-            <CardDescription>Recent activity from the community.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="space-y-6">
+      <header className='flex items-center justify-between'>
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
+            <p className="text-muted-foreground">
+            Recent activity from the community.
+            </p>
+        </div>
+        <Button onClick={handleMarkAllAsRead} disabled={isPending || activities.every(a => a.isRead)}>Mark all as read</Button>
+      </header>
+      <Card>
+        <CardContent className="p-4">
             {loading ? (
                 <div className="space-y-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3">
                             <Skeleton className="h-9 w-9 rounded-full" />
                             <div className="flex-1 space-y-2">
                                 <Skeleton className="h-3 w-4/5" />
@@ -169,9 +184,13 @@ export default function RecentActivity() {
                     ))}
                 </div>
             ) : activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                    No recent activity yet.
-                </p>
+                 <div className="text-center p-8">
+                    <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">No Notifications Yet</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Interact with posts and other users to see activity here.
+                    </p>
+                </div>
             ) : (
                 <div className="space-y-2">
                     {activities.map((activity) => (
@@ -181,7 +200,6 @@ export default function RecentActivity() {
             )}
         </CardContent>
     </Card>
+    </div>
   );
 }
-
-    

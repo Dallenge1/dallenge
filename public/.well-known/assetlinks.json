@@ -1,11 +1,39 @@
-
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
+    "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
       "package_name": "com.dallenge.twa",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_YOUR_SHA256_CERT_FINGERPRINT"]
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_YOUR_SHA256_CERT_FINGERPRINT"
+      ]
+    }
+  },
+  {
+    "relation": ["org.digitalassetlinks.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.dallenge.twa",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_YOUR_SHA256_CERT_FINGERPRINT"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "web",
+      "site": "https://dallenge.com"
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.dallenge.twa",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_YOUR_SHA256_CERT_FINGERPRINT"
+      ]
     }
   }
 ]

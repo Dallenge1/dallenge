@@ -7,6 +7,7 @@ import { ThemeScript } from '@/components/theme-script';
 export const metadata: Metadata = {
   title: 'Dallenge',
   description: 'Dallenge - Your All-in-One Educational and Wellness Platform',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -23,6 +24,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <meta name="theme-color" content="#000000" />
         <ThemeScript />
       </head>
       <body className="font-body antialiased">

@@ -3,68 +3,86 @@
     {
       "id": "user-avatar-1",
       "description": "Avatar for the main user",
-      "imageUrl": "https://picsum.photos/seed/avatar1/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg5MDE5MzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person portrait"
     },
     {
       "id": "user-avatar-2",
       "description": "Avatar for Jane Doe",
-      "imageUrl": "https://picsum.photos/seed/avatar2/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d29tYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg5NzM0NjN8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "woman portrait"
     },
     {
       "id": "user-avatar-3",
       "description": "Avatar for John Smith",
-      "imageUrl": "https://picsum.photos/seed/avatar3/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg5NTE1NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man portrait"
     },
     {
       "id": "user-avatar-4",
       "description": "Avatar for Emily White",
-      "imageUrl": "https://picsum.photos/seed/avatar4/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwZXJzb24lMjBzbWlsaW5nfGVufDB8fHx8MTc1ODkwMDczMHww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person smiling"
     },
     {
       "id": "user-avatar-5",
       "description": "Avatar for Alex Johnson",
-      "imageUrl": "https://picsum.photos/seed/avatar5/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1595211877493-41a4e5f236b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NTg5MjY3MjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "professional portrait"
     },
     {
       "id": "user-avatar-6",
       "description": "Avatar for Maria Garcia",
-      "imageUrl": "https://picsum.photos/seed/avatar6/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1719087358997-12957d0859e2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzU4OTgzNjk3fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "woman smiling"
     },
     {
       "id": "user-avatar-7",
       "description": "Avatar for David Smith",
-      "imageUrl": "https://picsum.photos/seed/avatar7/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1647480674766-7fff4ae8becc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBnbGFzc2VzfGVufDB8fHx8MTc1ODkyNTA4MXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man glasses"
     },
     {
       "id": "user-avatar-8",
       "description": "Avatar for Sophia Wang",
-      "imageUrl": "https://picsum.photos/seed/avatar8/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1531537571171-a707bf2683da?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx3b21hbiUyMGFzaWF8ZW58MHx8fHwxNzU4OTk3Mzk5fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "woman asia"
     },
     {
       "id": "user-avatar-9",
       "description": "Avatar for Daniel Kim",
-      "imageUrl": "https://picsum.photos/seed/avatar9/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1701953662754-bef0081cea3f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYW4lMjBrb3JlYXxlbnwwfHx8fDE3NTg5OTczOTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man korea"
     },
     {
       "id": "user-avatar-10",
       "description": "Avatar for Michael Brown",
-      "imageUrl": "https://picsum.photos/seed/avatar10/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1656337789708-cdf37b07112d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc1ODkzODY4Mnww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "man smiling"
     },
     {
       "id": "user-avatar-11",
       "description": "Avatar for Chris Lee",
-      "imageUrl": "https://picsum.photos/seed/avatar11/100/100",
+      "imageUrl": "https://images.unsplash.com/photo-1665700301987-b2a5f789f6d5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwZXJzb24lMjBjYXN1YWx8ZW58MHx8fHwxNzU4OTk3Mzk5fDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "person casual"
+    },
+    {
+      "id": "screenshot-feed",
+      "description": "A screenshot showing the main social feed of the Dallenge app.",
+      "imageUrl": "https://images.unsplash.com/photo-1702468005178-d03074b08398?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxzb2NpYWwlMjBmZWVkfGVufDB8fHx8MTc1ODk5MDUzM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "social feed"
+    },
+    {
+      "id": "screenshot-challenge",
+      "description": "A screenshot showing a user participating in a challenge on the Dallenge app.",
+      "imageUrl": "https://images.unsplash.com/photo-1751740415200-119cea92f4a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxmaXRuZXNzJTIwY2hhbGxlbmdlfGVufDB8fHx8MTc1ODk1ODkzMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fitness challenge"
+    },
+    {
+      "id": "screenshot-profile",
+      "description": "A screenshot of a user's profile page on the Dallenge app.",
+      "imageUrl": "https://images.unsplash.com/photo-1603415526960-f7e0328c63b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8dXNlciUyMHByb2ZpbGV8ZW58MHx8fHwxNzU4OTM3NDc5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "user profile"
     }
   ]
 }

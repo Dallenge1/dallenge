@@ -1,6 +1,7 @@
 
 import type {NextConfig} from 'next';
 import withPWAInit from 'next-pwa';
+import runtimeCaching from 'next-pwa/cache';
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -10,6 +11,7 @@ const withPWA = withPWAInit({
   fallbacks: {
     document: '/offline',
   },
+  runtimeCaching,
 });
 
 const nextConfig: NextConfig = {

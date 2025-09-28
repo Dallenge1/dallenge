@@ -7,11 +7,12 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  importScripts: ['/firebase-messaging-sw.js'],
+  fallbacks: {
+    document: '/offline',
+  },
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
